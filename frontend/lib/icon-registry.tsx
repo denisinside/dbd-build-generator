@@ -1,0 +1,46 @@
+import type { LucideIcon } from "lucide-react"
+import {
+  BookOpen,
+  Trophy,
+  Eye,
+  Wrench,
+  Zap,
+  Gauge,
+  Footprints,
+  Cog,
+  Target,
+  Users,
+  ShieldAlert,
+  Timer,
+  Sparkles,
+  HeartPulse,
+  Radar,
+  Ghost,
+  HelpCircle,
+} from "lucide-react"
+
+// Maps string keys stored in build data to concrete icon components.
+// This keeps the data layer free of React/component imports so a build
+// can be described entirely with plain strings.
+const registry: Record<string, LucideIcon> = {
+  book: BookOpen,
+  trophy: Trophy,
+  eye: Eye,
+  wrench: Wrench,
+  zap: Zap,
+  gauge: Gauge,
+  footprints: Footprints,
+  cog: Cog,
+  target: Target,
+  users: Users,
+  "shield-alert": ShieldAlert,
+  timer: Timer,
+  sparkles: Sparkles,
+  heart: HeartPulse,
+  radar: Radar,
+  ghost: Ghost,
+}
+
+export function getIcon(name: string): LucideIcon {
+  return registry[name] ?? HelpCircle
+}

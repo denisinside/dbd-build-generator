@@ -1,0 +1,521 @@
+{
+  "overview": "Items are to Survivors what Powers are to Killers. They are tools intended to help Survivors progress their objectives and hopefully escape from the Trial.\n\nObtaining\n\nThere are 2 ways for a Survivor Player to obtain an Item: the Bloodweb and Chests.\n\nItems can be purchased from the Bloodweb to stock their inventory, from which they can be equipped for the next Trial. During a Trial, Items can be retrieved from locked Chests by unlocking them.\n\nCharges\n\nAll Items have a set amount of Charges that are being depleted while using them. By default, all Items deplete at a rate of -1 c/s, unless it is modified outside effects, specific Add-ons that are attached to it, or by a specific interaction.\n\nOnce an Item's Charges are used up, the Item is considered depleted and cannot be used anymore for the remainder of the Trial, unless it is recharged by outside effects (e.g. Built to Last or Scavenger ).\n\nDropping/Picking-up\n\nItems, unlike Powers, can be dropped and picked back up at will, which also allows Survivor Players to exchange Items with one another or to pick-up an Item left beneath the Hook of a sacrificed Survivor that had carried one.\n\nBoth interactions take 1 second to perform.\n\nItem Categories\n\nSince Patch 7.0.0, Items are divided into 3 categories, which determine their behaviour with the Load-Out, interaction with Perks, and exiting the Trial:\n\nSurvivor Items These are Regular Items which return to a Survivor's inventory should they successfully escape the Trial. Special Items These are Limited Items which are related to specific Killer Powers, such as the Lament Configuration, Survivors may only temporarily interact with and carry them. Temporary Items These are Limited Items which can be used like Regular Items during the Trial, but do not return to a Survivor's inventory upon escaping the Trial. They remain within the Trial Grounds, consumed by The Entity.\n\nAdd-ons\n\nMain article: Add-ons\n\nAdd-ons allow Survivors to change various properties of an Item. Up to 2 Add-ons can be equipped with an Item before starting a Trial.\n\nAdd-ons cannot be equipped during a Trial, but it is possible to retrieve Items with pre-attached Add-ons from Chests when using the Perk Ace in the Hole.\n\nChest Loot\n\nMain article: Chests\n\nChests can contain an Item of any Rarity from Common to Very Rare, as well as of the Event Rarity during an Event. However, an Item's Rarity directly affects its chances to spawn in a Chests. One can increase those chances by using the Perk Plunderer's Instinct.\n\nKeeping Items\n\nIf a Survivor manages to escape with an Item, it will be kept in their inventory and replenished of charges. Any equipped Add-ons, however, will always be consumed after the Trial, unless one is using the Perk Ace in the Hole.\n\nLosing Items\n\nIf a Survivor dies during a Trial without the White Ward Offering, their Item and any attached Add-ons will be lost in the Trial.",
+  "item_types": [
+    {
+      "name": "Flashlights",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Flashlights",
+      "overview": "The main use of Flashlights is to temporarily blind the Killer.",
+      "items": [
+        {
+          "name": "Flashlight",
+          "description": "A standard Flashlight. Can be used to light your way in the darkness. Press the Use Item button to light the Flashlight for up to 8 seconds. \"Most of the battery life was wastefully used by the previous owner.\"",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_flashlight.png?9d0a80"
+        },
+        {
+          "name": "Sport Flashlight",
+          "description": "A very portable Flashlight with a good grip. Its efficient technology produces a powerful light while consuming less power. Press the Use Item button to light the Flashlight for up to 8 seconds. Has an increased Aim accuracy of +20 %. Has a reduced Depletion rate of -11 %.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_sportFlashlight.png?574655"
+        },
+        {
+          "name": "Utility Flashlight",
+          "description": "A sturdy but heavy Flashlight that packs a lot of power. Press the Use Item button to light the Flashlight for up to 12 seconds. Has an increased Beam brightness of +30 %. Has an increased Blindness duration of +15 %. Has a reduced Aim accuracy of -20 %.",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_utilityFlashlight.png?14da21"
+        }
+      ],
+      "addons": [
+        {
+          "name": "Battery",
+          "description": "A standard battery of unknown brand. Increases the Battery life by +2 seconds. \"Another nearly empty battery.\"",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_battery.png?a920d6"
+        },
+        {
+          "name": "Leather Grip",
+          "description": "A leather strip wrapped around the Flashlight for more grip. Increases the Aim accuracy by +20 %. \"Too many have fallen due to sweaty hands.\"",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_leatherGrip.png?a65ecf"
+        },
+        {
+          "name": "Power Bulb",
+          "description": "A tiny Flashlight bulb that packs more wattage for a brighter, more powerful light beam. Increases the brightness of the Beam by +20 %. Increases the duration of a successful Blind by +10 %. \"Even the most powerful light cannot pierce through The Black Fog's darkness.\"",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_powerBulb.png?5ed525"
+        },
+        {
+          "name": "Wide Lens",
+          "description": "A thin wide lens in perfect condition. Designed to spread the Flashlight beam at the cost of reducing its range of effectiveness. Increases the width of the Beam by +25 %. Reduces the reach of the Beam by -25 %.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_wideLens.png?c54743"
+        },
+        {
+          "name": "Focus Lens",
+          "description": "A thick glass lens that focuses the Flashlight beam to increase its intensity. Increases the reach of the Beam by +25 %. Increases the brightness by +20 %. Increases the duration of a successful Blind by +10 %. Reduces the width of the Beam by -15 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_focusLens.png?10aa35"
+        },
+        {
+          "name": "Heavy Duty Battery",
+          "description": "A battery marked as \"industrial strength\". Increases the Battery life by +4 seconds. \"A battery advertised as lasting 8 hours lasts only a couple of seconds in The Black Fog.\"",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_heavyDutyBattery.png?35eb69"
+        },
+        {
+          "name": "Low Amp Filament",
+          "description": "A filament bulb designed to extend a Flashlight battery's life. Reduces the Battery Depletion rate by -24 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_lowAmpFilament.png?f5a968"
+        },
+        {
+          "name": "Rubber Grip",
+          "description": "A rubber grip specifically fitting Flashlights for more grip. Increases the Aim accuracy by +40 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_rubberGrip.png?22b372"
+        },
+        {
+          "name": "TIR Optic",
+          "description": "A lens and reflector combo which can magnify a Flashlight's beam. Increases the brightness of the Beam by +30 %. Increases the duration of a successful Blind by +15 %. \"Let the light burn them out of their dark shroud.\"",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_tirOptic.png?3ff606"
+        },
+        {
+          "name": "Intense Halogen",
+          "description": "A chemical bulb that generates an intensely clear light. Increases the brightness of the Beam by +40 %. Increases the duration of a successful Blind by +20 %.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_intenseHalogen.png?63ceae"
+        },
+        {
+          "name": "Long Life Battery",
+          "description": "A recent model of battery that lasts longer. Extends the Battery life by +6 seconds.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_longLifeBattery.png?7901dd"
+        },
+        {
+          "name": "High-End Sapphire Lens",
+          "description": "A wide lens made of unscratchable sapphire that optimises the power and range of the light beam. Increases the reach of the Beam by +25 %. Increases the brightness of the Beam by +30 %. Increases the duration of a successful Blind by +15 %. Reduces the width of the Beam by -25 %.",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_high-EndSapphireLens.png?366d07"
+        },
+        {
+          "name": "Odd Bulb",
+          "description": "A heavy and completely opaque bulb of unknown origin which emits a faint light even when turned off. Increases the brightness of the Beam by +50 %. Increases the duration of a successful Blind by +25 %. Increases the Battery Depletion rate by +14 %.",
+          "rarity": "Visceral",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_oddBulb.png?3dac55"
+        }
+      ],
+      "skipped_deprecated_addons": 1,
+      "post_addons_text": null
+    },
+    {
+      "name": "Fog Vials",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Fog_Vial",
+      "overview": "Fog Vials are used to create a temporary Fog Cloud that obscures sounds and visibility within its Area of Effect and suppresses Auras and Scratch Marks, intended to help a Survivor evade the Killer in a chase.",
+      "items": [
+        {
+          "name": "Apprentice's Fog Vial",
+          "description": "\"Made by the hands of a diligent but timid novice.\" Start the Trial with 4 Charges. Press the Use Item button to release a concentrated Fog Cloud: Expands to a maximum size of 8 metres over 2 seconds. Lasts for 8 seconds. Obscures visibility and sounds within its Area of Effect: Has an opacity of 33 %. Suppresses Auras and Scratch Marks. Apprentice's Fog Vial takes 70 seconds to recharge after use.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_apprenticesFogVial.png?15c5b3"
+        },
+        {
+          "name": "Artisan's Fog Vial",
+          "description": "\"Crafted by an experienced glazier with a love for her craft.\" Start the Trial with 4 Charges. Press the Use Item button to release a concentrated Fog Cloud: Expands to a maximum size of 8 metres over 1.5 seconds. Lasts for 10 seconds. Obscures visibility and sounds within its Area of Effect: Has an opacity of 33 %. Suppresses Auras and Scratch Marks. Artisan's Fog Vial takes 65 seconds to recharge after use.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_artisansFogVial.png?20782b"
+        },
+        {
+          "name": "Vigo's Fog Vial",
+          "description": "\"From the man's own collection. Impeccable. Unparalleled.\" Start the Trial with 4 Charges. Press the Use Item button to release a concentrated Fog Cloud: Expands to a maximum size of 8 metres over 1.2 seconds. Lasts for 12 seconds. Obscures visibility and sounds within its Area of Effect: Has an opacity of 33 %. Suppresses Auras and Scratch Marks. Vigo's Fog Vial takes 60 seconds to recharge after use.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_vigosFogVial.png?ba135c"
+        }
+      ],
+      "addons": [
+        {
+          "name": "Volcanic Stone",
+          "description": "\"The heat of its birthplace glows within this living rock.\" Modifies the Fog Vial with the following effect: Reduces the Recharge time of the Fog Cloud by -5 seconds.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_volcanicStone.png?2668a4"
+        },
+        {
+          "name": "Reactive Compound",
+          "description": "\"Pressure builds within the vial. Its contents beg for release.\" Modifies the Fog Vial with the following effect: Reduces the Expansion time of the Fog Cloud by -1 second.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_reactiveCompound.png?6da483"
+        },
+        {
+          "name": "Oily Sap",
+          "description": "\"The emerging fog clings to the air, overwhelming the senses for even longer.\" Modifies the Fog Vial with the following effect: Increases the duration of the Fog Cloud by +2 seconds.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_oilySap.png?26f3d7"
+        },
+        {
+          "name": "Mushroom Formula",
+          "description": "\"Blooming wisps of fog grasp at the environment, reaching farther and farther out.\" Modifies the Fog Vial with the following effect: Increases the maximum size of the Fog Cloud by +2 metres.",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_mushroomFormula.png?8eaef3"
+        },
+        {
+          "name": "Potent Extract",
+          "description": "\"One drop is enough to change the consistency of this strange elixir.\" Modifies the Fog Vial with the following effects: Increases the opacity of the Fog Cloud by +100 %. Reduces the duration of the Fog Cloud by -50 %. Reduces the size of the Fog Cloud by -25 %.",
+          "rarity": "Visceral",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_potentExtract.png?7fdc2f"
+        }
+      ],
+      "skipped_deprecated_addons": 0,
+      "post_addons_text": null
+    },
+    {
+      "name": "Keys",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Key",
+      "overview": "Keys are used to reveal the Auras of nearby Survivors.\n\nThe Dull Key and the Skeleton Key can additionally be used to quickly unlock Chests and to re-open the Hatch, if the Killer closed it.",
+      "items": [
+        {
+          "name": "Broken Key",
+          "description": "\"The bow and shank of a key, vibrating with power.\" Start the Trial with 6 Charges. Press and hold the Use Item button to channel the Broken Key: The Auras of other Survivors within 48 metres of your location are revealed to you for 8 seconds. The Broken Key consumes -1 Charge per use of its ability.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_brokenKey.png?32b943"
+        },
+        {
+          "name": "Dull Key",
+          "description": "\"A bent and dull key that once held great power.\" Start the Trial with 5 Charges. Press and hold the Use Item button to channel the Dull Key: The Auras of other Survivors within 56 metres of your location are revealed to you for 9 seconds. While standing next to a locked Chest, press the Use Item button to quickly open it: Guarantees an Item of Rare Rarity or higher. The Aura of the Chest is revealed to other Survivors within 42 metres and highlighted in yellow: Grants the ability for 1 other Survivor to Rummage through that Chest once. Guarantees an Item of Rare Rarity or higher. While performing the Rummage action, the Aura of that Survivor is revealed to the Key holder. While standing next to the closed Hatch, press the Use Item button to re-open it: Takes 2.5 seconds to open. The Dull Key consumes -1 Charge per use of any one of its abilities.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_dullKey.png?a30f9d"
+        },
+        {
+          "name": "Skeleton Key",
+          "description": "\"A tarnished and crooked key, vibrating with ominous power.\" Start the Trial with 6 Charges. Press and hold the Use Item button to channel the Skeleton Key: The Auras of other Survivors within 64 metres of your location are revealed to you for 10 seconds. While standing next to a locked Chest, press the Use Item button to quickly open it: Guarantees an Item of Rare Rarity or higher. The Aura of the Chest is revealed to other Survivors within 42 metres and highlighted in yellow: Grants the ability for 1 other Survivor to Rummage through that Chest once. Guarantees an Item of Rare Rarity or higher. While performing the Rummage action, the Aura of that Survivor is revealed to the Key holder. While standing next to the closed Hatch, press the Use Item button to re-open it: Takes 2.5 seconds to open. The Skeleton Key consumes -1 Charge per use of any one of its abilities.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_skeletonKey.png?1b6308"
+        }
+      ],
+      "addons": [
+        {
+          "name": "Friendship Charm",
+          "description": "\"Someone's thumb has worn off the initials once carved into it.\" Modifies the Key with the following effect: Increases its Charges by +1.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_friendshipCharm.png?691b29"
+        },
+        {
+          "name": "Shrill Whistle",
+          "description": "\"The high-pitched scream gives a sense of urgency to everything.\" Modifies the Key with the following effect: Reduces the time it takes to channel the Key by -35 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_shrillWhistle.png?101507"
+        },
+        {
+          "name": "Braided Bauble",
+          "description": "\"Four thin but sturdy cords, all masterfully wrapped around one another.\" Modifies the Key with the following effect: Increases its Aura-reading duration by +2 seconds.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_braidedBauble.png?332519"
+        },
+        {
+          "name": "Unique Wedding Ring",
+          "description": "\"An engraved wedding ring that emerged from the Fog and resonates with an indescribable and incomprehensible energy.\" Modifies the Key with the following effects: The Aura of the Obsession is permanently revealed to you. Your Aura is permanently revealed to the Obsession. Unique Wedding Ring applies its effects passively and does not require actively using the Key. Reduces your chance of becoming the initial Obsession by reducing the default value by -100 %.",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_uniqueWeddingRing.png?d0e1de"
+        },
+        {
+          "name": "Blood Amber",
+          "description": "\"A blood-red amber striped with black veins. The amber is warm to the touch.\" Modifies the Key with the following effects: Reduces its Aura-reveal time by -6 seconds. Reduces its Charges by -2. While using the Key, the following effects apply: The Aura of the Killer is revealed to you. Your Aura is revealed to the Killer.",
+          "rarity": "Visceral",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_bloodAmber.png?a1d50c"
+        }
+      ],
+      "skipped_deprecated_addons": 0,
+      "post_addons_text": null
+    },
+    {
+      "name": "Maps",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Map",
+      "overview": "Maps are used to reveal the Auras of nearby Pallets and Windows to its user.\n\nFurthermore, they can be used to create a marker known as a Beam of Light, which is visible and audible only to Survivors, and reveals the Auras of nearby Generators to all Survivors.",
+      "items": [
+        {
+          "name": "Cryptic Map",
+          "description": "\"Looking at it, the directions make no sense. But merely holding it grants you an uncanny intuition.\" Start the Trial with 4 Charges. Press the Use Item button to channel the Cryptic Map: The Auras of Pallets and Windows within 24 metres of your location are revealed to you for 10 seconds. While channelling the Map, press the Secondary Action button at any point before the timer elapses for the following additional effect: Creates a Beam of Light at your current location that lasts for 16 seconds. The Auras of Generators within 32 metres of it are revealed to all Survivors and highlighted in red. The Cryptic Map consumes -1 Charge per use.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_CrypticMap.png?624911"
+        },
+        {
+          "name": "Scribbled Map",
+          "description": "\"Peering at the parchment, a path appears in your mind. Moments later, you feel lost again.\" Start the Trial with 5 Charges. Press the Use Item button to channel the Scribbled Map: The Auras of Pallets and Windows within 32 metres of your location are revealed to you for 12 seconds. While channelling the Map, press the Secondary Action button at any point before the timer elapses for the following additional effect: Creates a Beam of Light at your current location that lasts for 16 seconds. The Auras of Generators within 32 metres of it are revealed to all Survivors and highlighted in red. The Scribbled Map consumes -1 Charge per use.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_map.png?a9589c"
+        },
+        {
+          "name": "Annotated Map",
+          "description": "\"The sketch is clear and detailed. Strange knowledge flows into you, followed by dread uncertainty.\" Start the Trial with 6 Charges. Press the Use Item button to channel the Annotated Map: The Auras of Pallets and Windows within 40 metres of your location are revealed to you for 14 seconds. While channelling the Map, press the Secondary Action button at any point before the timer elapses for the following additional effect: Creates a Beam of Light at your current location that lasts for 16 seconds. The Auras of Generators within 32 metres of it are revealed to all Survivors and highlighted in red. The Annotated Map consumes -1 Charge per use.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_rainbowMap.png?25dde4"
+        },
+        {
+          "name": "Bloodsense Map",
+          "description": "\"A bloodstained piece of parchment, hastily rolled and burning with a strange power.\" Start the Trial with 8 Charges. Press the Use Item button to channel the Bloodsense Map: The Auras of injured Survivors, Pallets, and Windows within 48 metres of your location are revealed to you for 14 seconds. Causes Pools of Blood to spawn beneath you while being used. While channelling the Map, press the Secondary Action button at any point before the timer elapses for the following additional effect: Creates a Beam of Light at your current location that lasts for 16 seconds. The Auras of Generators within 32 metres of it are revealed to all Survivors and highlighted in red. The Bloodsense Map consumes -1 Charge per use.",
+          "rarity": "Event",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_bloodsenseMap.png?d98285"
+        }
+      ],
+      "addons": [
+        {
+          "name": "Glowing Ink",
+          "description": "\"Some of the images seemed to jump right off the page.\" Modifies the Map with the following effect: Increases the duration it reveals Auras for by +2 seconds.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_glowingInk.png?976c14"
+        },
+        {
+          "name": "Gnarled Compass",
+          "description": "\"It seems to set itself to the perfect distance every time.\" Modifies the Map with the following effect: Increases its Charges by +2.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_gnarledCompass.png?b2ac98"
+        },
+        {
+          "name": "Battered Tape",
+          "description": "\"Additional pieces of parchment hung loosely from the map, hastily affixed with tape.\" Modifies the Map with the following effect: Increases its maximum range by +8 metres.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_batteredTape.png?635d3f"
+        },
+        {
+          "name": "Sharpened Flint",
+          "description": "\"When sparked near the map, new sigils appeared in unexpected locations.\" Modifies the Map with the following effect: Grants the ability to track the location of Totems and reveal their Auras, when using the Map.",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_sharpenedFlint.png?25de8f"
+        },
+        {
+          "name": "Crimson Stamp",
+          "description": "\"Only those with absolute confidence dared to place their seal upon the map.\" Modifies the Map with the following effects: The Aura of the Killer is revealed to all Survivors when within 8 metres of the Beam of Light. Reduces the Life time of the Beam of Light by -10 seconds. Reduces its Charges by -2.",
+          "rarity": "Visceral",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_crimsonStamp.png?4a05ab"
+        }
+      ],
+      "skipped_deprecated_addons": 0,
+      "post_addons_text": null
+    },
+    {
+      "name": "Med-Kits",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Med-Kit",
+      "overview": "Med-Kits are a Healing Item used to speed up Healing Actions on other Survivors, who are either injured or dying. The rarer the Med-Kit, the faster its Altruistic Healing speed.\n\nMed-Kits can also be used to self-heal when injured, but this applies a considerable speed de-buff and an Efficiency penalty to the Item, allowing for a maximum of just one full self-heal with any Med-Kit, making it a wasteful action on rarer Med-Kits and in general an action that should only be taken in dire situations.",
+      "items": [
+        {
+          "name": "First Aid Kit",
+          "description": "A standard First Aid Kit with all the necessary equipment for treating common to more serious injuries. Can be used to heal other Survivors: Increased Altruistic Healing speed of +40 %. Unlocks the Self-Heal action: Reduced Personal Healing speed of -33 %. Reduced Item efficiency of -33 %. The First Aid Kit has a Capacity of 24 Charges.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_firstAidKit.png?c3dfd1"
+        },
+        {
+          "name": "Camping Aid Kit",
+          "description": "A rudimentary First Aid Kit which can save lives in emergencies, even if it's lacking some of its supplies. Can be used to heal other Survivors: Increased Altruistic Healing speed of +35 %. Unlocks the Self-Heal action: Reduced Personal Healing speed of -33 %. Reduced Item efficiency of -33 %. The Camping Aid Kit has a Capacity of 24 Charges. \"Barely has enough material for a decent patch-up.\"",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_campingAidKit.png?66c06a"
+        },
+        {
+          "name": "Emergency Med-Kit",
+          "description": "A sturdy and well organised Med-Kit equipped with top condition emergency supplies. Can be used to heal other Survivors: Increased Altruistic Healing speed of +45 %. Unlocks the Self-Heal action: Reduced Personal Healing speed of -33 %. Reduced Item efficiency of -33 %. The Emergency Med-Kit has a Capacity of 24 Charges. \"There is a cure for almost everything...but not for this.\"",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_emergencyMedKit.png?3e0dbf"
+        },
+        {
+          "name": "Ranger Med-Kit",
+          "description": "A large metal box containing medical supplies aimed at emergency rescues in hard to reach, often isolated locations. Can be used to heal other Survivors: Increased Altruistic Healing speed of +50 %. Unlocks the Self-Heal action: Reduced Personal Healing speed of -33 %. Reduced Item efficiency of -33 %. The Ranger Med-Kit has a Capacity of 24 Charges. \"A small engraved label can be found glued to the back panel: VK.ID-3994723.\"",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_rangerMedKit.png?7b5928"
+        }
+      ],
+      "addons": [
+        {
+          "name": "Bandages",
+          "description": "A pack of bandages usually found in First Aid Kits. Increases the available Healing Charges by +8 Charges.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_bandages.png?eb0625"
+        },
+        {
+          "name": "Butterfly Tape",
+          "description": "Medical quality tape used to close small wounds. Increases the Healing speed by +5 %.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_butterflyTape.png?f18e7b"
+        },
+        {
+          "name": "Rubber Gloves",
+          "description": "Disposable medical gloves to avoid cross-contamination. Increases the Great Success zone of Healing Skill Checks by +10 %.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_rubberGloves.png?763724"
+        },
+        {
+          "name": "Medical Scissors",
+          "description": "Scissors designed to easily cut through textiles. Increases the Healing speed by +10 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_medicalScissors.png?ec20a2"
+        },
+        {
+          "name": "Needle & Thread",
+          "description": "Not exactly a medical device. However, it can be used to quickly and painfully close up a wound. Increases the Odds of triggering Healing Skill Checks by +10 %. Increases the Progression bonus for succeeding at Great Healing Skill Checks by +5 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_needle%26Thread.png?a433ea"
+        },
+        {
+          "name": "Self Adherent Wrap",
+          "description": "A pack of bandages that stick to themselves without the need of clips for a faster patch-up that requires less readjustments. Increases the Healing speed by +5 %. Increases the available Healing Charges by +8 Charges.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_selfAdherentWrap.png?cb4dfe"
+        },
+        {
+          "name": "Sponge",
+          "description": "A mundane sponge used to soak up extra blood, providing easier access to wounds. Increases the Great Success zone of Healing Skill Checks by +20 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_sponge.png?cb4971"
+        },
+        {
+          "name": "Gauze Roll",
+          "description": "A sterile gauze used for a variety of wounds. Part of a total wound care system. Increases the available Healing Charges by +10 Charges.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_gauzeRoll.png?a94896"
+        },
+        {
+          "name": "Surgical Suture",
+          "description": "A medical device used to close and hold body tissue. Even though it is very effective, the surgical suture is challenging to use. Increases the Odds of triggering Healing Skill Checks by +15 %. Increases the Progression bonus for succeeding at Great Healing Skill Checks by +10 %.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_surgicalSuture.png?b14f4b"
+        },
+        {
+          "name": "Abdominal Dressing",
+          "description": "A highly absorbent pad that prevents bodily fluid leakage when applied to large abdominal wounds. Increases the Healing speed of Med-Kits by +15 %.",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_abdominalDressing.png?279ed7"
+        },
+        {
+          "name": "Styptic Agent",
+          "description": "\"A white powder with coagulant properties. Apply the agent to a wound to stop it from haemorrhaging.\" Modifies the Med-Kit with the following effect: Increases the Efficiency of Personal Healing actions by +15 %.",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_stypticAgent.png?f659ee"
+        },
+        {
+          "name": "Anti-Exhaustion Syringe",
+          "description": "\"A mysterious fluid that reinvigorates both body and mind.\" While using the Med-Kit to heal yourself or another Survivor, press the Secondary Action button to trigger the following effect: Causes the affected Survivor to instantly recover from the Exhausted Status Effect. Anti-Exhaustion Syringe consumes the Med-Kit after use.",
+          "rarity": "Visceral",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_anti-haemorrhagicSyringe.png?871c87"
+        },
+        {
+          "name": "Gel Dressings",
+          "description": "A pack of gel forming pads used to patch up heavily exuding wounds. Increases the available Healing Charges by +16 Charges.",
+          "rarity": "Visceral",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_gelDressings.png?f8cce7"
+        }
+      ],
+      "skipped_deprecated_addons": 1,
+      "post_addons_text": "Calculations\n\nAll Med-Kits have 24 Charges by default; one Health State requires 16 Charges.\n\nPersonal Healing\n\nPersonal Healing is afflicted by a Healing Speed and Item Efficiency penalty of -33.333 % each. This reduces the Personal Healing Speed of all Med-Kits to 66.666 % or 0.666 c/s. This increases the Item Consumption rate to -1.333 c/s or 133.333 %, meaning for each 1 Charge put into the Health State, the Med-Kit loses 1.333 Charges from its Capacity, allowing to self-heal for just 1 Health State.\n\nMed-Kit: All Med-Kits | Penalty Percentage: -33 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Penalty Speed: -0.33 c/s | Healing Speed: Resulting Speed: 0.67 c/s | Resulting Healing Time: ~24 seconds\n\nAltruistic Healing\n\nAltruistic Healing has an increased Healing speed by +35 to +50 %, depending on the Med-Kit. Altruistic Healing has a default Consumption rate of 100 % or -1 c/s across all Med-Kits. This allows to heal the equivalent of 1.5 Health States.\n\nMed-Kit: No Med-Kit | Bonus Percentage: - | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: - | Healing Speed: Resulting Speed: 1 c/s | Resulting Healing Time: 16 seconds\nMed-Kit: Camping Aid Kit | Bonus Percentage: +35 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: +0.35 c/s | Healing Speed: Resulting Speed: 1.35 c/s | Resulting Healing Time: ~11.852 seconds\nMed-Kit: First Aid Kit | Bonus Percentage: +40 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: +0.4 c/s | Healing Speed: Resulting Speed: 1.4 c/s | Resulting Healing Time: ~11.429 seconds\nMed-Kit: All Hallows' Eve Lunchbox | Bonus Percentage: +40 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: +0.4 c/s | Healing Speed: Resulting Speed: 1.4 c/s | Resulting Healing Time: ~11.429 seconds\nMed-Kit: Anniversary Med-Kit | Bonus Percentage: +40 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: +0.4 c/s | Healing Speed: Resulting Speed: 1.4 c/s | Resulting Healing Time: ~11.429 seconds\nMed-Kit: Masquerade Med-Kit | Bonus Percentage: +40 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: +0.4 c/s | Healing Speed: Resulting Speed: 1.4 c/s | Resulting Healing Time: ~11.429 seconds\nMed-Kit: Emergency Med-Kit | Bonus Percentage: +45 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: +0.45 c/s | Healing Speed: Resulting Speed: 1.45 c/s | Resulting Healing Time: ~11.034 seconds\nMed-Kit: Ranger Med-Kit | Bonus Percentage: +50 % | Healing Speed: Base Value: 1 c/s | Healing Speed: Bonus Speed: +0.5 c/s | Healing Speed: Resulting Speed: 1.5 c/s | Resulting Healing Time: ~10.666 seconds"
+    },
+    {
+      "name": "Toolboxes",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Toolboxes",
+      "overview": "Toolboxes have two main uses: repairing Generators faster and sabotaging Hooks.\n\nNot all Toolboxes are suited for both aforementioned uses, as some are specialised for just one of them and perform poorly when executing the other.",
+      "items": [
+        {
+          "name": "Toolbox",
+          "description": "Metal box containing a set of basic tools. Even without training, can be used to repair or break various mechanical components. 20 Charges. Increases the Repair speed by +50 %. Unlocks the Sabotage action. Increases the Sabotage speed by +15 %. \"It is unclear as to where these tools come from. Were they brought in by one of us or did they belong to one of the monsters?\"",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_toolbox.png?760545"
+        },
+        {
+          "name": "Worn-Out Tools",
+          "description": "A metal box containing out of condition tools that could break at any moment. Even without training, can be used to repair or break various mechanical components. 16 Charges. Increases the Repair speed by +50 %. Reduces the Success zone of Good Skill Checks by -10 %. Unlocks the Sabotage action. \"You call these tools?... Really?\"",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_wornOutTools.png?755d30"
+        },
+        {
+          "name": "Commodious Toolbox",
+          "description": "A large metal box containing basic tool and extra mechanical parts. Even without training, can be used to repair or break various mechanical components. 32 Charges. Increases the Repair speed by +50 %. Unlocks the Sabotage action. Increases the Sabotage speed by +50 %.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_commodiousToolbox.png?b118a1"
+        },
+        {
+          "name": "Mechanic's Toolbox",
+          "description": "A metal box with specialised mechanics tools. Even without training, can be used to repair or break various mechanical components. 16 Charges. Increases the Repair speed by +75 %. Unlocks the Sabotage action. Increases the Sabotage speed by +25 %.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_mechanicsToolbox.png?55cd0f"
+        },
+        {
+          "name": "Alex's Toolbox",
+          "description": "A metal box containing mainly saws and vice grips of varying sizes but also other tools. Even though the content of this Toolbox is clearly aimed at destructive deeds, it can be used to repair various mechanical components as well. 18 Charges. Increases the Repair speed by +10 %. Unlocks the Sabotage action. Increases the Sabotage speed by +100 %. \"Most of the tools are identified as 'owned by Alex'.\"",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_alexsToolbox.png?e03e7f"
+        },
+        {
+          "name": "Engineer's Toolbox",
+          "description": "A metal box with highly specialised tools meant for engineering. Most of the tools can be used by neophytes to make quick repairs or break various mechanical components. 16 Charges. Increases the Repair speed by +100 %. Unlocks the Sabotage action. Increases the Sabotage speed by +10 %. \"I've created tools beyond compare and stood paralysed as they were stolen from me. These are but a poor replica, spat out by The Fog.\" — Vigo's Journal",
+          "rarity": "Very Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconItems_engineersToolbox.png?188e4e"
+        }
+      ],
+      "addons": [
+        {
+          "name": "Clean Rag",
+          "description": "A mundane rag. Suspiciously clean. Increases the Action speed for Toolbox Repair by +20 %.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_cleanRag.png?a8f97d"
+        },
+        {
+          "name": "Instructions",
+          "description": "Someone quickly painted what seems to be repair instructions on this piece of bark. While repairing a Generator with a Toolbox, you benefit from the following effect: Suppresses all regular Repair Skill Checks. This does not affect any special Skill Checks triggered by outside effects.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_instructions.png?2c2543"
+        },
+        {
+          "name": "Scraps",
+          "description": "Springs, screws and gears. Mostly unusable junk. Increases the capacity of Toolboxes by +8 Charges.",
+          "rarity": "Common",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_scraps.png?60a345"
+        },
+        {
+          "name": "Cutting Wire",
+          "description": "A rudimentary cutting tool made from a jagged metal wire and two wooden handles. Increases the Action speed for Toolbox Sabotage by +20 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_cuttingWire.png?87513b"
+        },
+        {
+          "name": "Protective Gloves",
+          "description": "Thick gloves, which reduce manual dexterity but protect hands from injury. While sabotaging a Hook with a Toolbox, you benefit from the following effect: Suppresses the Loud Noise Notification usually triggered after completing the Sabotage action.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_protectiveGloves.png?6b4406"
+        },
+        {
+          "name": "Socket Swivels",
+          "description": "\"Swivels provide bend and flexibility for bolts that are out of reach, deep within mechanical devices.\" Modifies the Toolbox with the following effect: Increases its Repair speed by +30 %.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_socketSwivels.png?360bd5"
+        },
+        {
+          "name": "Spring Clamp",
+          "description": "Useful tool to clamp hoses or hold wires in place and prevent damage or injury. While repairing a Generator with a Toolbox, you benefit from the following effect: Reduces the audible range of all noises related to the Repair interaction by -8 metres.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_springClamp.png?b651b6"
+        },
+        {
+          "name": "Wire Spool",
+          "description": "A portable but heavy spool of copper wire. Increases the capacity of Toolboxes by +12 Charges.",
+          "rarity": "Uncommon",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_wireSpool.png?9d265d"
+        },
+        {
+          "name": "Grip Wrench",
+          "description": "An adjustable wrench with a tough grip. Essential in any Toolbox. Increases the Auto-Repair timer for sabotaged Hooks by +20 seconds.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_gripWrench.png?367484"
+        },
+        {
+          "name": "Hacksaw",
+          "description": "A small hand saw mounted with a metal cutting blade. Increases the Action speed for Toolbox Sabotage by +30 %.",
+          "rarity": "Rare",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_hacksaw.png?b7e4cf"
+        },
+        {
+          "name": "Brand New Part",
+          "description": "This intricate mechanical part feels oddly out of place. It is clean and shiny as if straight out of the factory. Press the Use Item button while standing next to a Generator to perform the Install Brand New Part action: Triggers a difficult Skill Check. Permanently reduces the Repair requirement by -10 Charges for that Generator upon succeeding the Skill Check. Brand New Part is consumed on use.",
+          "rarity": "Visceral",
+          "icon_url": "https://deadbydaylight.wiki.gg/images/IconAddon_brandNewPart.png?b863d0"
+        }
+      ],
+      "skipped_deprecated_addons": 0,
+      "post_addons_text": "Calculations\n\nCapacity\n\nGenerator Repair\n\nEach Toolbox has a set amount of Charges, referred to in its description on the Wiki as its capacity.\n\nWhile using a Toolbox to repair a Generator, the Toolbox transfers its Charges into the Generator at the same rate as it increases the Repair speed for, a unique behaviour amongst Items. This means that there is no standard Depletion rate common to all Toolboxes; each Toolbox has its own Depletion rate based on its Repair Speed bonus. This behaviour is why in order to calculate interactions with Perks such as Streetwise or Overwhelming Presence, which affect the Item Depletion rate, each individual Depletion rate of the Toolboxes must be accounted for in the calculations, as they are different from the default of -1 c/s other Items generally use.\n\nThis also has the effect that all Toolboxes with 16 Charges will progress a Generator by the same amount, but will do so within different timeframes, with rarer Toolboxes taking less time to transfer their Charges into a Generator. This behaviour is the reason why Toolboxes with lower Charges are better used as a speed boost to Repair Completion towards the end of a Generator's Repair, as those 1-2 seconds can make the difference between either completing a Generator or being interrupted by the Killer first.\n\nHook Sabotage\n\nUsing a Toolbox to sabotage a Hook has a unique effect on the Depletion rate amongst any Items.\n\nUsually, Items deplete their Charges at a default rate of -1 c/s while they are being used, which also applies to Toolboxes used for repairing a Generator. Hook Sabotage, however, doubles the Depletion rate to -2 c/s, which paired with the Sabotage action taking 3 seconds to complete by default, makes the Toolbox deplete a total of -6 Charges per sabotaged Hook.\n\nFor quite a while, this was the reason why the gauge next to the Toolbox icon on the Survivor's HUD would turn red while using the Toolbox to perform the Sabotage action on a Hook (i.e. indicating the presence of a debuff).Most likely because the higher Depletion rate is an inherent behaviour of the Sabotage action, a later Patch eventually made the gauge remain coloured in default white.\n\nRepair Speeds\n\nRepairing a Generator fills it with Charges. A Generator requires 90 Charges in order to be fully repaired or completed.\n\nToolbox: Worn-Out Tools | Capacity (Charges): 16 Charges | Repair Speed Bonus (%): +50 % | Resulting Depletion rate (c/s): -1.5 c/s | Resulting Repair Speed (c/s): +1.5 c/s | Resulting Toolbox Duration (seconds): 10.666 seconds | Charges Transferred after Toolbox Depletion: 16 Charges | Resulting Repair Progression (%): 17.777 %\nToolbox: Toolbox | Capacity (Charges): 20 Charges | Repair Speed Bonus (%): +50 % | Resulting Depletion rate (c/s): -1.5 c/s | Resulting Repair Speed (c/s): +1.5 c/s | Resulting Toolbox Duration (seconds): 13.333 | Charges Transferred after Toolbox Depletion: 20 Charges | Resulting Repair Progression (%): 22.222 %\nToolbox: Mechanic's Toolbox | Capacity (Charges): 16 Charges | Repair Speed Bonus (%): +75 % | Resulting Depletion rate (c/s): -1.75 c/s | Resulting Repair Speed (c/s): +1.75 c/s | Resulting Toolbox Duration (seconds): 9.143 seconds | Charges Transferred after Toolbox Depletion: 16 Charges | Resulting Repair Progression (%): 17.777 %\nToolbox: Commodious Toolbox | Capacity (Charges): 32 Charges | Repair Speed Bonus (%): +50 % | Resulting Depletion rate (c/s): -1.5 c/s | Resulting Repair Speed (c/s): +1.5 c/s | Resulting Toolbox Duration (seconds): 21.333 seconds | Charges Transferred after Toolbox Depletion: 32 Charges | Resulting Repair Progression (%): 35.555 %\nToolbox: Anniversary Toolbox | Capacity (Charges): 32 Charges | Repair Speed Bonus (%): +50 % | Resulting Depletion rate (c/s): -1.5 c/s | Resulting Repair Speed (c/s): +1.5 c/s | Resulting Toolbox Duration (seconds): 21.333 seconds | Charges Transferred after Toolbox Depletion: 32 Charges | Resulting Repair Progression (%): 35.555 %\nToolbox: Festive Toolbox | Capacity (Charges): 32 Charges | Repair Speed Bonus (%): +50 % | Resulting Depletion rate (c/s): -1.5 c/s | Resulting Repair Speed (c/s): +1.5 c/s | Resulting Toolbox Duration (seconds): 21.333 seconds | Charges Transferred after Toolbox Depletion: 32 Charges | Resulting Repair Progression (%): 35.555 %\nToolbox: Masquerade Toolbox | Capacity (Charges): 32 Charges | Repair Speed Bonus (%): +50 % | Resulting Depletion rate (c/s): -1.5 c/s | Resulting Repair Speed (c/s): +1.5 c/s | Resulting Toolbox Duration (seconds): 21.333 seconds | Charges Transferred after Toolbox Depletion: 32 Charges | Resulting Repair Progression (%): 35.555 %\nToolbox: Engineer's Toolbox | Capacity (Charges): 16 Charges | Repair Speed Bonus (%): +100 % | Resulting Depletion rate (c/s): -2.0 c/s | Resulting Repair Speed (c/s): +2.0 c/s | Resulting Toolbox Duration (seconds): 8 seconds | Charges Transferred after Toolbox Depletion: 16 Charges | Resulting Repair Progression (%): 17.777 %\nToolbox: Alex's Toolbox | Capacity (Charges): 24 Charges | Repair Speed Bonus (%): +10 % | Resulting Depletion rate (c/s): -1.1 c/s | Resulting Repair Speed (c/s): +1.1 c/s | Resulting Toolbox Duration (seconds): 21.818 seconds | Charges Transferred after Toolbox Depletion: 24 Charges | Resulting Repair Progression (%): 26.666 %\n\nNote: the calculations above assume a Survivor solo-repairing a Generator and not hitting any Great Skill Checks or using any other Unlockables to gain bonus Progression. It also assumes that there are no negative modifiers from any Unlockable the Killer might be using."
+    }
+  ]
+}

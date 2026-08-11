@@ -1,0 +1,17 @@
+﻿.env
+.venv/
+chroma_db/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+Thumbs.db
+*.log
+data/_path_check.json
+frontend/tsconfig.tsbuildinfo
