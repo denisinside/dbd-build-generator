@@ -8,7 +8,7 @@ import json
 import pathlib
 
 import pytest
-from fake_mongo import FakeDb
+from conftest import indexed_db
 
 from generate_build import (
     KILLER_ALIASES,
@@ -32,20 +32,18 @@ def load(filename):
 
 @pytest.fixture(scope="module")
 def real_db():
-    return FakeDb(
-        {
-            "perks": load("perks.json")["perks"],
-            "killers": load("killers.json")["killers"],
-            "survivors": load("survivors.json")["survivors"],
-            "items_addons": [
-                {
-                    "type_name": item_type["name"],
-                    "items": item_type["items"],
-                    "addons": item_type["addons"],
-                }
-                for item_type in load("items.json")["item_types"]
-            ],
-        }
+    return indexed_db(
+        load("perks.json")["perks"],
+        load("killers.json")["killers"],
+        load("survivors.json")["survivors"],
+        [
+            {
+                "type_name": item_type["name"],
+                "items": item_type["items"],
+                "addons": item_type["addons"],
+            }
+            for item_type in load("items.json")["item_types"]
+        ],
     )
 
 

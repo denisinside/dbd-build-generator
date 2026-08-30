@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
+from naming import killer_search_keys, perk_search_keys, survivor_search_keys
+
 
 load_dotenv()
 
@@ -41,15 +43,34 @@ def replace_collection(db, collection_name, documents):
 
 
 def save_perks_to_mongo(db, perks_data):
-    return replace_collection(db, "perks", perks_data["perks"])
+    perks = perks_data["perks"]
+
+    for perk in perks:
+        perk["search_keys"] = perk_search_keys(perk)
+
+    db["perks"].create_index("search_keys")
+    return replace_collection(db, "perks", perks)
 
 
 def save_killers_to_mongo(db, killers_data):
-    return replace_collection(db, "killers", killers_data["killers"])
+    killers = killers_data["killers"]
+
+    for killer in killers:
+        killer["search_keys"], killer["phrase_keys"] = killer_search_keys(killer)
+
+    db["killers"].create_index("search_keys")
+    db["killers"].create_index("phrase_keys")
+    return replace_collection(db, "killers", killers)
 
 
 def save_survivors_to_mongo(db, survivors_data):
-    return replace_collection(db, "survivors", survivors_data["survivors"])
+    survivors = survivors_data["survivors"]
+
+    for survivor in survivors:
+        survivor["search_keys"] = survivor_search_keys(survivor)
+
+    db["survivors"].create_index("search_keys")
+    return replace_collection(db, "survivors", survivors)
 
 
 def save_items_to_mongo(db, items_data):

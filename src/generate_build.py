@@ -1,9 +1,7 @@
 import difflib
 import json
 import os
-import re
 import sys
-import unicodedata
 from typing import Optional
 
 import chromadb
@@ -26,6 +24,7 @@ from chroma_loader import (  # noqa: E402
     COLLECTION_NAME,
     get_openrouter_embedding_function,
 )
+from naming import normalize_name, word_spans  # noqa: E402
 from schemas import BuildRequestAnalysis, DbDBuildSchema  # noqa: E402
 
 
@@ -96,7 +95,7 @@ RAG_CATEGORY_GROUPS = {
 
 # Community nicknames the wiki does not list as an official alias. Everything
 # derivable from the data (real names, in-game aliases, titles with or without
-# the leading article) is handled by build_killer_index instead.
+# the leading article) is indexed by naming.killer_search_keys instead.
 KILLER_ALIASES = {
     "billy": "The Hillbilly",
     "bubba": "The Cannibal",
@@ -123,11 +122,42 @@ KILLER_ALIASES = {
 # whole result stays in the agent context for every later step.
 RAG_TOP_K = 10
 
+# Without a timeout a hung OpenRouter call holds a request thread forever, and
+# the default thread pool is all it takes to wedge the whole API.
+LLM_TIMEOUT_SECONDS = int(os.getenv("LLM_TIMEOUT_SECONDS", "120"))
+LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "2"))
+
+
+def build_llm():
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY is missing in .env")
+
+    return ChatOpenRouter(
+        model=LLM_MODEL,
+        api_key=OPENROUTER_API_KEY,
+        temperature=0,
+        request_timeout=LLM_TIMEOUT_SECONDS,
+        max_retries=LLM_MAX_RETRIES,
+    )
+
+
+_mongo_db = None
+
 
 def get_mongo_db():
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
-    client.admin.command("ping")
-    return client[DB_NAME]
+    """The process-wide MongoDB handle.
+
+    A fresh MongoClient per call meant a new connection pool, monitor threads
+    and a ping round-trip on every entity lookup.
+    """
+    global _mongo_db
+
+    if _mongo_db is None:
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+        client.admin.command("ping")
+        _mongo_db = client[DB_NAME]
+
+    return _mongo_db
 
 
 def get_chroma_collection():
@@ -139,38 +169,12 @@ def get_chroma_collection():
     )
 
 
-def normalize_name(value):
-    if value is None:
-        return ""
-
-    text = unicodedata.normalize("NFKD", str(value))
-    text = "".join(char for char in text if not unicodedata.combining(char))
-    return " ".join(text.lower().split())
-
-
 def find_perk_document(db, entity_name):
-    target = normalize_name(entity_name)
-
-    for perk in db["perks"].find({}):
-        if normalize_name(perk.get("name")) == target:
-            return perk
-
-    return None
+    return db["perks"].find_one({"search_keys": normalize_name(entity_name)})
 
 
 def find_survivor_document(db, entity_name):
-    target = normalize_name(entity_name)
-
-    for survivor in db["survivors"].find({}):
-        metadata = survivor.get("metadata") or {}
-
-        if normalize_name(survivor.get("name")) == target:
-            return survivor
-
-        if normalize_name(metadata.get("Name")) == target:
-            return survivor
-
-    return None
+    return db["survivors"].find_one({"search_keys": normalize_name(entity_name)})
 
 
 def killer_title(killer):
@@ -182,119 +186,49 @@ def killer_title(killer):
     return metadata.get("Title") or killer.get("name")
 
 
-def tokenized(value):
-    """Normalized text with punctuation flattened to single spaces."""
-    text = normalize_name(value)
-    return " ".join(re.sub(r"[^0-9a-z]+", " ", text).split())
-
-
-def contains_phrase(haystack, needle):
-    """True when `needle` appears in `haystack` on whole-word boundaries."""
-    if not needle or not haystack:
-        return False
-
-    return f" {needle} " in f" {haystack} "
-
-
-# A phrase this short inside a longer sentence is more likely to be a
-# coincidence than a reference ("bear trap" is not a request for The Huntress).
-MIN_PHRASE_KEY_LENGTH = 5
-
-
-def build_killer_index(db):
-    """[(killer, exact_keys, phrase_keys) ...] built from every known name form.
-
-    `phrase_keys` is the subset safe to look for inside a longer string: real
-    names and titles only. Short in-game nicknames stay exact-match-only.
-    """
-    index = []
-
-    for killer in db["killers"].find({}):
-        metadata = killer.get("metadata") or {}
-        keys = []
-        phrase_keys = []
-
-        for value in [killer.get("name"), metadata.get("Name"), killer_title(killer)]:
-            key = normalize_name(value)
-            # "Huntress" should resolve just as well as "The Huntress".
-            variants = [key, key[4:]] if key.startswith("the ") else [key]
-
-            for variant in variants:
-                if not variant:
-                    continue
-
-                if variant not in keys:
-                    keys.append(variant)
-
-                if len(variant) >= MIN_PHRASE_KEY_LENGTH and variant not in phrase_keys:
-                    phrase_keys.append(variant)
-
-        # In-game aliases are stored as quoted strings: '"Banshee" "Bob"'.
-        for alias in re.findall(r'"([^"]+)"', metadata.get("Game Alias(es)") or ""):
-            key = normalize_name(alias)
-
-            if key and key not in keys:
-                keys.append(key)
-
-        index.append((killer, keys, phrase_keys))
-
-    return index
-
-
 def find_killer_document(db, entity_name):
     """Resolve a Killer by title, real name, community nickname or typo.
 
     Deliberately staged instead of "first substring wins": an ambiguous input
     used to silently return whichever Killer happened to be inserted first.
+    Every stage but the fuzzy fallback is an indexed lookup.
     """
     target = normalize_name(entity_name)
 
     if not target:
         return None
 
-    index = build_killer_index(db)
-    alias_target = KILLER_ALIASES.get(target)
+    # 1. Any known name form, optionally reached through a nickname.
+    aliases = [target, normalize_name(KILLER_ALIASES.get(target))]
+    killer = db["killers"].find_one({"search_keys": {"$in": [key for key in aliases if key]}})
 
-    # 1. Exact match on any known name form, optionally via a nickname.
-    for killer, keys, _ in index:
-        if target in keys:
-            return killer
-
-        if alias_target and normalize_name(alias_target) in keys:
-            return killer
-
-    # 2. Whole-word containment ("the shape (michael myers)"), longest wins.
-    target_tokens = tokenized(entity_name)
-    best_match = None
-    best_length = 0
-
-    for killer, _, phrase_keys in index:
-        for key in phrase_keys:
-            key_tokens = tokenized(key)
-
-            if not contains_phrase(target_tokens, key_tokens):
-                continue
-
-            if len(key_tokens) > best_length:
-                best_match = killer
-                best_length = len(key_tokens)
-
-    if best_match is not None:
-        return best_match
-
-    # 3. Last resort: closest spelling, logged so bad matches are debuggable.
-    candidates = {key: killer for killer, keys, _ in index for key in keys}
-    closest = difflib.get_close_matches(target, list(candidates), n=1, cutoff=0.85)
-
-    if closest:
-        killer = candidates[closest[0]]
-        print(
-            f"  Fuzzy Killer match: '{entity_name}' -> "
-            f"'{killer_title(killer)}' (via '{closest[0]}')"
-        )
+    if killer is not None:
         return killer
 
-    return None
+    # 2. A name embedded in a longer string ("the shape (michael myers)").
+    for span in sorted(word_spans(entity_name), key=len, reverse=True):
+        killer = db["killers"].find_one({"phrase_keys": span})
+
+        if killer is not None:
+            return killer
+
+    # 3. Last resort: closest spelling, logged so bad matches are debuggable.
+    candidates = {
+        key: document["_id"]
+        for document in db["killers"].find({}, {"search_keys": 1})
+        for key in document["search_keys"]
+    }
+    closest = difflib.get_close_matches(target, list(candidates), n=1, cutoff=0.85)
+
+    if not closest:
+        return None
+
+    killer = db["killers"].find_one({"_id": candidates[closest[0]]})
+    print(
+        f"  Fuzzy Killer match: '{entity_name}' -> "
+        f"'{killer_title(killer)}' (via '{closest[0]}')"
+    )
+    return killer
 
 
 def find_item_document(db, entity_name):
@@ -635,15 +569,7 @@ def search_web_meta(query: str) -> str:
 
 @traceable(name="classify_build_request", run_type="chain")
 def classify_build_request(user_query):
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY is missing in .env")
-
-    llm = ChatOpenRouter(
-        model=LLM_MODEL,
-        api_key=OPENROUTER_API_KEY,
-        temperature=0,
-    )
-    structured_llm = llm.with_structured_output(BuildRequestAnalysis)
+    structured_llm = build_llm().with_structured_output(BuildRequestAnalysis)
     prompt = f"""
 You are the input gate for a Dead by Daylight build generator.
 
@@ -738,20 +664,13 @@ def message_content_to_text(content):
 
 
 def run_research_agent(user_query, role, output_language):
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY is missing in .env")
-
     print(f"Research agent role: {role}")
     print(f"Dynamic prose language: {output_language}")
     print(f"Agent model: {LLM_MODEL}")
 
     tools = [search_dbd_rag, lookup_mongo_entity, search_web_meta]
     tools_by_name = {agent_tool.name: agent_tool for agent_tool in tools}
-    llm = ChatOpenRouter(
-        model=LLM_MODEL,
-        api_key=OPENROUTER_API_KEY,
-        temperature=0,
-    )
+    llm = build_llm()
     agent_llm = llm.bind_tools(tools)
     messages = [
         SystemMessage(content=get_system_prompt(role, output_language)),
@@ -985,12 +904,7 @@ def canonicalize_and_validate_build(build, expected_role, db=None):
 
 
 def generate_grounded_build(user_query, role, output_language, research_memo):
-    llm = ChatOpenRouter(
-        model=LLM_MODEL,
-        api_key=OPENROUTER_API_KEY,
-        temperature=0,
-    )
-    structured_llm = llm.with_structured_output(DbDBuildSchema)
+    structured_llm = build_llm().with_structured_output(DbDBuildSchema)
     errors = None
 
     for attempt in range(3):

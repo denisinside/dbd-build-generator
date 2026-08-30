@@ -1,15 +1,18 @@
 import os
 import sys
+import time
+import traceback
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 from bson import ObjectId
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from pymongo import DESCENDING, MongoClient
+from pymongo import DESCENDING
 
 
 load_dotenv()
@@ -17,16 +20,25 @@ load_dotenv()
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root / "src"))
 
-from generate_build import enrich_build_entity_details, run_generate_build  # noqa: E402
+from generate_build import (  # noqa: E402
+    enrich_build_entity_details,
+    get_mongo_db,
+    run_generate_build,
+)
 
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-DB_NAME = "dbd_generator"
 DEFAULT_ALLOWED_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
 
-mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
-database = mongo_client[DB_NAME]
-generated_builds = database["generated_builds"]
+# Generating a build costs real money, and the endpoint is unauthenticated.
+GENERATE_LIMIT_PER_HOUR = int(os.getenv("GENERATE_LIMIT_PER_HOUR", "5"))
+RATE_LIMIT_WINDOW_SECONDS = 3600
+
+_recent_generates = defaultdict(deque)
+
+
+def builds_collection():
+    # Resolved lazily so the API can start before MongoDB is reachable.
+    return get_mongo_db()["generated_builds"]
 
 
 def get_allowed_origins():
@@ -41,12 +53,46 @@ def get_allowed_origins():
     return [origin for origin in origins if origin]
 
 
+def enforce_generate_limit(request: Request):
+    """Per-client hourly cap on the one endpoint that costs money.
+
+    ponytail: in-process counter, so the cap is per worker. Run uvicorn with
+    --proxy-headers behind a proxy, or every client looks like the proxy.
+    Move to Redis if you ever run more than one worker.
+    """
+    if GENERATE_LIMIT_PER_HOUR <= 0:
+        return
+
+    client = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+    hits = _recent_generates[client]
+
+    while hits and now - hits[0] > RATE_LIMIT_WINDOW_SECONDS:
+        hits.popleft()
+
+    if len(hits) >= GENERATE_LIMIT_PER_HOUR:
+        retry_after = int(RATE_LIMIT_WINDOW_SECONDS - (now - hits[0])) + 1
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Too many builds. The limit is {GENERATE_LIMIT_PER_HOUR} per hour. "
+                f"Try again in {retry_after // 60 + 1} min."
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    hits.append(now)
+
+    # Keep the map from growing forever on a long-lived process.
+    for stale in [key for key, seen in _recent_generates.items() if not seen]:
+        del _recent_generates[stale]
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    mongo_client.admin.command("ping")
-    generated_builds.create_index([("created_at", DESCENDING)])
+    builds_collection().create_index([("created_at", DESCENDING)])
     yield
-    mongo_client.close()
+    builds_collection().database.client.close()
 
 
 app = FastAPI(title="DBD Build Generator API", lifespan=lifespan)
@@ -108,9 +154,28 @@ def needs_entity_descriptions(document):
     return False
 
 
-@app.post("/api/builds/generate")
+@app.post("/api/builds/generate", dependencies=[Depends(enforce_generate_limit)])
 def generate_build(request: GenerateBuildRequest):
-    build = run_generate_build(request.prompt)
+    try:
+        build = run_generate_build(request.prompt)
+    except ValueError as error:
+        # The model could not produce a build that survives validation.
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Could not build a valid loadout for this request. "
+                "Try describing the role and playstyle more concretely."
+            ),
+        ) from error
+    except Exception as error:
+        # Upstream model or search failure: never leak a bare 500 after the
+        # user has already waited a minute.
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=502,
+            detail="The build service is unavailable right now. Please try again.",
+        ) from error
 
     if "error" in build:
         error = build["error"]
@@ -121,7 +186,7 @@ def generate_build(request: GenerateBuildRequest):
         "prompt": request.prompt,
         "created_at": datetime.now(timezone.utc),
     }
-    insert_result = generated_builds.insert_one(document)
+    insert_result = builds_collection().insert_one(document)
     document["_id"] = insert_result.inserted_id
 
     return serialize_build(document)
@@ -136,7 +201,7 @@ def list_builds():
         "build_score": 1,
         "created_at": 1,
     }
-    documents = generated_builds.find({}, projection).sort("created_at", DESCENDING)
+    documents = builds_collection().find({}, projection).sort("created_at", DESCENDING)
     return [serialize_build(document) for document in documents]
 
 
@@ -145,13 +210,13 @@ def get_build(build_id: str):
     if not ObjectId.is_valid(build_id):
         raise HTTPException(status_code=404, detail="Build not found")
 
-    document = generated_builds.find_one({"_id": ObjectId(build_id)})
+    document = builds_collection().find_one({"_id": ObjectId(build_id)})
     if document is None:
         raise HTTPException(status_code=404, detail="Build not found")
 
     if needs_entity_descriptions(document):
         document = enrich_build_entity_details(document)
-        generated_builds.update_one(
+        builds_collection().update_one(
             {"_id": document["_id"]},
             {
                 "$set": {

@@ -8,6 +8,8 @@ observable.
 import pytest
 from fake_mongo import FakeDb
 
+from naming import killer_search_keys, perk_search_keys, survivor_search_keys
+
 
 PERKS = [
     {
@@ -174,16 +176,30 @@ ITEMS_ADDONS = [
 ]
 
 
-@pytest.fixture
-def db():
+def indexed_db(perks, killers, survivors, items_addons):
+    """A FakeDb carrying the same lookup keys mongo_loader stores at ingest."""
+    for perk in perks:
+        perk["search_keys"] = perk_search_keys(perk)
+
+    for killer in killers:
+        killer["search_keys"], killer["phrase_keys"] = killer_search_keys(killer)
+
+    for survivor in survivors:
+        survivor["search_keys"] = survivor_search_keys(survivor)
+
     return FakeDb(
         {
-            "perks": PERKS,
-            "killers": KILLERS,
-            "survivors": SURVIVORS,
-            "items_addons": ITEMS_ADDONS,
+            "perks": perks,
+            "killers": killers,
+            "survivors": survivors,
+            "items_addons": items_addons,
         }
     )
+
+
+@pytest.fixture
+def db():
+    return indexed_db(PERKS, KILLERS, SURVIVORS, ITEMS_ADDONS)
 
 
 def survivor_build(**overrides):
