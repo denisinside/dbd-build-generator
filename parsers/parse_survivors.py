@@ -2,26 +2,18 @@ import json
 import sys
 from urllib.parse import urljoin
 
-import requests
-from bs4 import BeautifulSoup
-
-from wiki_utils import clean_text, embedding_element_text, save_json
+from media_mirror import mirror_survivors_media
+from wiki_utils import (
+    clean_text,
+    embedding_element_text,
+    get_page_soup,
+    save_json,
+)
 
 
 BASE_URL = "https://deadbydaylight.wiki.gg"
 SURVIVORS_URL = f"{BASE_URL}/wiki/Survivors"
 SAMPLE_SURVIVOR_NAME = "Dwight Fairfield"
-
-
-def get_page_soup(url):
-    headers = {
-        "User-Agent": "DbDBuildGenerator/0.1 (educational project)",
-    }
-
-    response = requests.get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-
-    return BeautifulSoup(response.text, "html.parser")
 
 
 def find_heading(content, heading_name):
@@ -355,6 +347,7 @@ def parse_all_survivors_data():
 
 def main():
     data = parse_all_survivors_data()
+    mirror_survivors_media(data)
     save_json(data, "survivors.json")
 
 

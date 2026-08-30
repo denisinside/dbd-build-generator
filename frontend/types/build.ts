@@ -8,6 +8,8 @@ export type Role = "Survivor" | "Killer"
 export interface Character {
   name: string
   image: string
+  /** Remote source used only if `image` fails to load. */
+  imageFallback?: string
   role: Role
   /** Current difficulty rating (e.g. 2) */
   difficulty: number
@@ -18,12 +20,14 @@ export interface Character {
 export interface Perk {
   name: string
   image: string
+  imageFallback?: string
   description?: string
 }
 
 export interface Addon {
   name: string
   image: string
+  imageFallback?: string
   description?: string
   rarity?: string
   showPlus?: boolean
@@ -32,6 +36,7 @@ export interface Addon {
 export interface Item {
   name: string
   image: string
+  imageFallback?: string
   description?: string
   rarity?: string
 }
@@ -74,6 +79,7 @@ export interface BuildPoint {
 export interface CounterMatchup {
   name: string
   image: string
+  imageFallback?: string
   difficulty: Difficulty
   reason: string
 }
@@ -96,12 +102,15 @@ export interface Build {
 export interface GeneratedPerk {
   name: string
   icon_url: string | null
+  /** Locally mirrored copy under /media, when it exists. */
+  icon_path: string | null
   description: string | null
 }
 
 export interface GeneratedAddon {
   name: string
   icon_url: string | null
+  icon_path: string | null
   description: string | null
   rarity: string | null
 }
@@ -110,6 +119,7 @@ export interface GeneratedItemKit {
   kit_title: string
   item_name: string | null
   item_icon_url: string | null
+  item_icon_path: string | null
   item_description: string | null
   item_rarity: string | null
   addons: GeneratedAddon[]
@@ -131,6 +141,7 @@ export interface GeneratedCounterKiller {
   difficulty_level: "Medium Difficulty" | "High Difficulty"
   explanation: string
   portrait_url: string | null
+  portrait_path: string | null
 }
 
 export interface GeneratedBuild {
@@ -139,6 +150,7 @@ export interface GeneratedBuild {
   build_title: string
   character_name: string
   character_portrait_url: string | null
+  character_portrait_path: string | null
   role: Role
   difficulty_rating: number
   build_score: number

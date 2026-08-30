@@ -2,10 +2,14 @@ import json
 import sys
 from urllib.parse import urljoin
 
-import requests
-from bs4 import BeautifulSoup
-
-from wiki_utils import clean_text, embedding_element_text, parse_rarity, save_json
+from media_mirror import mirror_killers_media
+from wiki_utils import (
+    clean_text,
+    embedding_element_text,
+    get_page_soup,
+    parse_rarity,
+    save_json,
+)
 
 
 BASE_URL = "https://deadbydaylight.wiki.gg"
@@ -19,17 +23,6 @@ SKIP_METADATA_KEYS = {
     "Terror Radius Music",
     "Cost",
 }
-
-
-def get_page_soup(url):
-    headers = {
-        "User-Agent": "DbDBuildGenerator/0.1 (educational project)",
-    }
-
-    response = requests.get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-
-    return BeautifulSoup(response.text, "html.parser")
 
 
 def find_heading(content, heading_name, tag_name="h2"):
@@ -510,6 +503,7 @@ def parse_all_killers_data():
 
 def main():
     data = parse_all_killers_data()
+    mirror_killers_media(data)
     save_json(data, "killers.json")
 
 

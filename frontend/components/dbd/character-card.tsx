@@ -15,6 +15,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
         <div className="absolute -inset-1 rounded-lg bg-dbd-purple/25 blur-md" aria-hidden />
         <SmartImage
           src={character.image}
+          fallbackSrc={character.imageFallback}
           alt={character.name}
           fallbackLabel={character.name}
           className="relative h-16 w-16 rounded-md border border-dbd-border md:h-[70px] md:w-[70px]"

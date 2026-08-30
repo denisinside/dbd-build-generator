@@ -15,6 +15,21 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 EMBEDDING_MODEL = "openai/text-embedding-3-small"
 
+# Roughly 800 tokens per chunk with ~100 tokens of overlap. Wiki lore articles
+# reach 18k characters; embedding one of those as a single vector produces mush
+# and floods the agent context, so everything long is chunked.
+CHUNK_SIZE_CHARS = 3200
+CHUNK_OVERLAP_CHARS = 400
+
+LORE_SECTIONS = ["Overview", "Lore", "Trivia"]
+
+# Perk classes are documented per role on the wiki.
+ROLES_BY_AVAILABILITY = {
+    "Both": ["Survivor", "Killer"],
+    "Survivors": ["Survivor"],
+    "Killers": ["Killer"],
+}
+
 
 def load_json(file_path):
     with open(file_path, "r", encoding="utf-8") as file:
@@ -22,10 +37,122 @@ def load_json(file_path):
 
 
 def slugify(text):
-    text = text.lower().strip()
+    text = str(text).lower().strip()
     text = re.sub(r"[^a-z0-9]+", "_", text)
     text = text.strip("_")
     return text
+
+
+def overlap_tail(text, overlap=CHUNK_OVERLAP_CHARS):
+    """Last `overlap` characters of a chunk, cut at a word boundary."""
+    if overlap <= 0 or len(text) <= overlap:
+        return text
+
+    tail = text[-overlap:]
+    space = tail.find(" ")
+
+    if space == -1:
+        return tail
+
+    return tail[space + 1 :]
+
+
+def split_oversized(text, size, overlap):
+    """Hard-split a single block that is longer than one chunk."""
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = min(start + size, len(text))
+
+        if end < len(text):
+            # Prefer breaking on whitespace so words stay intact.
+            boundary = text.rfind(" ", start + size // 2, end)
+
+            if boundary != -1:
+                end = boundary
+
+        chunks.append(text[start:end].strip())
+
+        if end >= len(text):
+            break
+
+        start = max(end - overlap, start + 1)
+
+    return [chunk for chunk in chunks if chunk]
+
+
+def chunk_text(text, size=CHUNK_SIZE_CHARS, overlap=CHUNK_OVERLAP_CHARS):
+    """Split text into overlapping chunks, preferring paragraph boundaries."""
+    text = (text or "").strip()
+
+    if not text:
+        return []
+
+    if len(text) <= size:
+        return [text]
+
+    paragraphs = [part.strip() for part in text.split("\n\n") if part.strip()]
+    chunks = []
+    current = ""
+
+    for paragraph in paragraphs:
+        if len(paragraph) > size:
+            if current:
+                chunks.append(current)
+                current = ""
+
+            chunks.extend(split_oversized(paragraph, size, overlap))
+            continue
+
+        candidate = f"{current}\n\n{paragraph}" if current else paragraph
+
+        if len(candidate) <= size:
+            current = candidate
+            continue
+
+        chunks.append(current)
+        carry = overlap_tail(current, overlap)
+        current = f"{carry}\n\n{paragraph}" if carry else paragraph
+
+    if current:
+        chunks.append(current)
+
+    return chunks
+
+
+class RecordBuffer:
+    """Collects chunked documents plus their metadata and stable ids."""
+
+    def __init__(self):
+        self.documents = []
+        self.metadatas = []
+        self.ids = []
+
+    def add(self, base_id, text, entity_name, category, role, owner, section=None):
+        chunks = chunk_text(text)
+
+        for index, chunk in enumerate(chunks):
+            metadata = {
+                "entity_name": entity_name,
+                "category": category,
+                "role": role,
+                "owner": owner or entity_name,
+                "chunk_index": index,
+                "chunk_count": len(chunks),
+            }
+
+            if section:
+                metadata["section"] = section
+
+            self.documents.append(chunk)
+            self.metadatas.append(metadata)
+            self.ids.append(base_id if len(chunks) == 1 else f"{base_id}_c{index}")
+
+        return len(chunks)
+
+    def __len__(self):
+        return len(self.documents)
 
 
 def get_openrouter_embedding_function():
@@ -80,9 +207,7 @@ def add_in_batches(collection, documents, metadatas, ids, batch_size=100):
 
 
 def build_perk_records(perks_data):
-    documents = []
-    metadatas = []
-    ids = []
+    buffer = RecordBuffer()
 
     for perk in perks_data["perks"]:
         name = perk["name"]
@@ -90,167 +215,242 @@ def build_perk_records(perks_data):
         character = perk["character"]
         description = perk["description"]
 
-        documents.append(
-            f"Perk: {name} | Role: {role} | Character: {character} | Description: {description}"
+        buffer.add(
+            base_id="perk_" + slugify(name),
+            text=(
+                f"Perk: {name} | Role: {role} | Character: {character} "
+                f"| Description: {description}"
+            ),
+            entity_name=name,
+            category="perk",
+            role=role,
+            owner=character,
         )
-        metadatas.append(
-            {
-                "entity_name": name,
-                "category": "perk",
-                "role": role,
-            }
-        )
-        ids.append("perk_" + slugify(name))
 
-    return documents, metadatas, ids
+    return buffer
+
+
+def build_mechanics_records(perks_data):
+    """Perk mechanics prose scraped from the Perks article.
+
+    These documents are role-agnostic, so each one is indexed once per role:
+    every RAG query filters on role, and a single 'Both' row would never match.
+    """
+    buffer = RecordBuffer()
+    embedding_texts = perks_data.get("embedding_texts") or {}
+
+    general_blocks = [
+        ("Perk Slots", embedding_texts.get("overview_perk_slots")),
+        ("Perk Classes", embedding_texts.get("perk_classes_intro")),
+    ]
+
+    for entity_name, text in general_blocks:
+        if not text:
+            continue
+
+        for role in ["Survivor", "Killer"]:
+            buffer.add(
+                base_id=f"mechanics_{slugify(entity_name)}_{slugify(role)}",
+                text=f"Game mechanics: {entity_name}\n\n{text}",
+                entity_name=entity_name,
+                category="game_mechanics",
+                role=role,
+                owner="Perks",
+            )
+
+    for perk_class in embedding_texts.get("perk_classes", []):
+        class_name = perk_class["name"]
+        roles = ROLES_BY_AVAILABILITY.get(perk_class.get("available_for"), [])
+        text_parts = [
+            part
+            for part in [perk_class.get("summary"), perk_class.get("detail_text")]
+            if part
+        ]
+
+        if not roles or not text_parts:
+            continue
+
+        for role in roles:
+            buffer.add(
+                base_id=f"mechanics_class_{slugify(class_name)}_{slugify(role)}",
+                text=f"Perk class: {class_name}\n\n" + "\n\n".join(text_parts),
+                entity_name=class_name,
+                category="game_mechanics",
+                role=role,
+                owner="Perk Classes",
+            )
+
+    return buffer
 
 
 def build_killer_records(killers_data):
-    documents = []
-    metadatas = []
-    ids = []
+    buffer = RecordBuffer()
+    global_intro = killers_data.get("global_intro")
+
+    if global_intro:
+        buffer.add(
+            base_id="mechanics_killers_overview_killer",
+            text=f"Game mechanics: Killers\n\n{global_intro}",
+            entity_name="Killers",
+            category="game_mechanics",
+            role="Killer",
+            owner="Killers",
+        )
 
     for killer in killers_data["killers"]:
-        killer_name = killer["name"]
+        metadata = killer.get("metadata") or {}
+        # The Title ("The Huntress") is what players, the LLM and the build
+        # schema all use, so it is the canonical owner key.
+        title = metadata.get("Title") or killer["name"]
         power = killer["power"]
 
-        documents.append(
-            f"Killer: {killer_name} | Power: {power['name']} | Description: {power['description']}"
+        buffer.add(
+            base_id="killer_power_" + slugify(title),
+            text=(
+                f"Killer: {title} ({killer['name']}) | Power: {power['name']} "
+                f"| Description: {power['description']}"
+            ),
+            entity_name=title,
+            category="killer_power",
+            role="Killer",
+            owner=title,
         )
-        metadatas.append(
-            {
-                "entity_name": killer_name,
-                "category": "killer_power",
-                "role": "Killer",
-            }
-        )
-        ids.append("killer_power_" + slugify(killer_name))
 
-        lore_parts = []
-
-        for section_name in ["Overview", "Lore", "Trivia"]:
+        for section_name in LORE_SECTIONS:
             section = killer["sections"].get(section_name)
+            text = (section or {}).get("text")
 
-            if section is None:
+            if not text:
                 continue
 
-            text = section.get("text")
-
-            if text:
-                lore_parts.append(f"{section_name}:\n{text}")
-
-        if lore_parts:
-            documents.append(
-                f"Killer: {killer_name}\n" + "\n\n".join(lore_parts)
+            buffer.add(
+                base_id=f"killer_lore_{slugify(title)}_{slugify(section_name)}",
+                text=f"Killer: {title} ({killer['name']}) — {section_name}\n\n{text}",
+                entity_name=title,
+                category="killer_lore",
+                role="Killer",
+                owner=title,
+                section=section_name,
             )
-            metadatas.append(
-                {
-                    "entity_name": killer_name,
-                    "category": "killer_lore",
-                    "role": "Killer",
-                }
-            )
-            ids.append("killer_lore_" + slugify(killer_name))
 
         for addon in killer["addons"]:
             addon_name = addon["name"]
-            documents.append(
-                f"Addon for {killer_name}: {addon_name} | Description: {addon['description']}"
-            )
-            metadatas.append(
-                {
-                    "entity_name": addon_name,
-                    "category": "addon",
-                    "role": "Killer",
-                }
-            )
-            ids.append(
-                "killer_addon_"
-                + slugify(killer_name)
-                + "_"
-                + slugify(addon_name)
+            rarity = addon.get("rarity") or "Unknown"
+
+            buffer.add(
+                base_id=(
+                    "killer_addon_"
+                    + slugify(title)
+                    + "_"
+                    + slugify(addon_name)
+                ),
+                text=(
+                    f"Add-on for {title}: {addon_name} | Rarity: {rarity} "
+                    f"| Description: {addon['description']}"
+                ),
+                entity_name=addon_name,
+                category="addon",
+                role="Killer",
+                owner=title,
             )
 
-    return documents, metadatas, ids
+    return buffer
 
 
 def build_survivor_records(survivors_data):
-    documents = []
-    metadatas = []
-    ids = []
+    buffer = RecordBuffer()
+    global_intro = survivors_data.get("global_intro")
+
+    if global_intro:
+        buffer.add(
+            base_id="mechanics_survivors_overview_survivor",
+            text=f"Game mechanics: Survivors\n\n{global_intro}",
+            entity_name="Survivors",
+            category="game_mechanics",
+            role="Survivor",
+            owner="Survivors",
+        )
 
     for survivor in survivors_data["survivors"]:
         survivor_name = survivor["name"]
-        lore_parts = []
 
-        for section_name in ["Overview", "Lore", "Trivia"]:
+        for section_name in LORE_SECTIONS:
             section = survivor["sections"].get(section_name)
+            text = (section or {}).get("text")
 
-            if section is None:
+            if not text:
                 continue
 
-            text = section.get("text")
+            buffer.add(
+                base_id=(
+                    f"survivor_lore_{slugify(survivor_name)}_{slugify(section_name)}"
+                ),
+                text=f"Survivor: {survivor_name} — {section_name}\n\n{text}",
+                entity_name=survivor_name,
+                category="survivor_lore",
+                role="Survivor",
+                owner=survivor_name,
+                section=section_name,
+            )
 
-            if text:
-                lore_parts.append(f"{section_name}:\n{text}")
-
-        if not lore_parts:
-            continue
-
-        documents.append(
-            f"Survivor: {survivor_name}\n" + "\n\n".join(lore_parts)
-        )
-        metadatas.append(
-            {
-                "entity_name": survivor_name,
-                "category": "survivor_lore",
-                "role": "Survivor",
-            }
-        )
-        ids.append("survivor_lore_" + slugify(survivor_name))
-
-    return documents, metadatas, ids
+    return buffer
 
 
 def build_item_records(items_data):
-    documents = []
-    metadatas = []
-    ids = []
+    buffer = RecordBuffer()
 
     for item_type in items_data["item_types"]:
-        category = item_type["name"]
+        category_name = item_type["name"]
+        overview = item_type.get("overview")
+
+        if overview:
+            buffer.add(
+                base_id="item_type_" + slugify(category_name),
+                text=f"Item category: {category_name}\n\n{overview}",
+                entity_name=category_name,
+                category="item",
+                role="Survivor",
+                owner=category_name,
+            )
 
         for item in item_type["items"]:
             item_name = item["name"]
-            documents.append(
-                f"Item: {item_name} | Category: {category} | Key-Value Stats: {item['description']}"
+            rarity = item.get("rarity") or "Unknown"
+
+            buffer.add(
+                base_id="item_" + slugify(item_name),
+                text=(
+                    f"Item: {item_name} | Category: {category_name} "
+                    f"| Rarity: {rarity} | Key-Value Stats: {item['description']}"
+                ),
+                entity_name=item_name,
+                category="item",
+                role="Survivor",
+                owner=category_name,
             )
-            metadatas.append(
-                {
-                    "entity_name": item_name,
-                    "category": "item",
-                    "role": "Survivor",
-                }
-            )
-            ids.append("item_" + slugify(item_name))
 
         for addon in item_type["addons"]:
             addon_name = addon["name"]
-            documents.append(
-                f"Item Addon: {addon_name} | Category: {category} | Effect: {addon['description']}"
-            )
-            metadatas.append(
-                {
-                    "entity_name": addon_name,
-                    "category": "addon",
-                    "role": "Survivor",
-                }
-            )
-            ids.append(
-                "item_addon_" + slugify(category) + "_" + slugify(addon_name)
+            rarity = addon.get("rarity") or "Unknown"
+
+            buffer.add(
+                base_id=(
+                    "item_addon_"
+                    + slugify(category_name)
+                    + "_"
+                    + slugify(addon_name)
+                ),
+                text=(
+                    f"Add-on for {category_name}: {addon_name} "
+                    f"| Rarity: {rarity} | Effect: {addon['description']}"
+                ),
+                entity_name=addon_name,
+                category="addon",
+                role="Survivor",
+                owner=category_name,
             )
 
-    return documents, metadatas, ids
+    return buffer
 
 
 def save_all_to_chroma(data_dir):
@@ -262,45 +462,33 @@ def save_all_to_chroma(data_dir):
     survivors_data = load_json(os.path.join(data_dir, "survivors.json"))
     items_data = load_json(os.path.join(data_dir, "items.json"))
 
+    sources = [
+        ("perks", build_perk_records(perks_data)),
+        ("mechanics", build_mechanics_records(perks_data)),
+        ("killer_docs", build_killer_records(killers_data)),
+        ("survivor_docs", build_survivor_records(survivors_data)),
+        ("item_docs", build_item_records(items_data)),
+    ]
+
     all_documents = []
     all_metadatas = []
     all_ids = []
-    counts = {
-        "perks": 0,
-        "killer_docs": 0,
-        "survivor_docs": 0,
-        "item_docs": 0,
-    }
+    counts = {}
 
-    docs, metas, ids = build_perk_records(perks_data)
-    counts["perks"] = len(docs)
-    all_documents.extend(docs)
-    all_metadatas.extend(metas)
-    all_ids.extend(ids)
-    print(f"Prepared {counts['perks']} perk documents for ChromaDB.")
+    for label, buffer in sources:
+        counts[label] = len(buffer)
+        all_documents.extend(buffer.documents)
+        all_metadatas.extend(buffer.metadatas)
+        all_ids.extend(buffer.ids)
+        print(f"Prepared {len(buffer)} {label} chunks for ChromaDB.")
 
-    docs, metas, ids = build_killer_records(killers_data)
-    counts["killer_docs"] = len(docs)
-    all_documents.extend(docs)
-    all_metadatas.extend(metas)
-    all_ids.extend(ids)
-    print(f"Prepared {counts['killer_docs']} killer documents for ChromaDB.")
+    duplicates = len(all_ids) - len(set(all_ids))
 
-    docs, metas, ids = build_survivor_records(survivors_data)
-    counts["survivor_docs"] = len(docs)
-    all_documents.extend(docs)
-    all_metadatas.extend(metas)
-    all_ids.extend(ids)
-    print(f"Prepared {counts['survivor_docs']} survivor documents for ChromaDB.")
+    if duplicates:
+        raise ValueError(f"Found {duplicates} duplicate ChromaDB ids")
 
-    docs, metas, ids = build_item_records(items_data)
-    counts["item_docs"] = len(docs)
-    all_documents.extend(docs)
-    all_metadatas.extend(metas)
-    all_ids.extend(ids)
-    print(f"Prepared {counts['item_docs']} item/addon documents for ChromaDB.")
-
-    print(f"Adding {len(all_documents)} documents into ChromaDB...")
+    longest = max((len(document) for document in all_documents), default=0)
+    print(f"Adding {len(all_documents)} chunks into ChromaDB (longest {longest} chars)...")
     add_in_batches(collection, all_documents, all_metadatas, all_ids)
 
     counts["total"] = collection.count()

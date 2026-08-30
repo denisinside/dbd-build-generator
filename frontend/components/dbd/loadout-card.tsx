@@ -18,6 +18,7 @@ export function LoadoutCard({ loadout }: LoadoutCardProps) {
           <EntityTooltip name={loadout.item.name} description={loadout.item.description}>
             <RarityIcon
               src={loadout.item.image}
+              fallbackSrc={loadout.item.imageFallback}
               alt={loadout.item.name}
               rarity={loadout.item.rarity}
               fallbackLabel={loadout.item.name}
@@ -34,6 +35,7 @@ export function LoadoutCard({ loadout }: LoadoutCardProps) {
             >
               <RarityIcon
                 src={addon.image}
+                fallbackSrc={addon.imageFallback}
                 alt={addon.name}
                 rarity={addon.rarity}
                 showPlus={addon.showPlus}

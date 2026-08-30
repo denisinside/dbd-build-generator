@@ -15,6 +15,7 @@ export function KillerCard({ counter }: KillerCardProps) {
       <div className="relative">
         <SmartImage
           src={counter.image}
+          fallbackSrc={counter.imageFallback}
           alt={counter.name}
           fallbackLabel={counter.name}
           className="h-[74px] w-[74px] rounded-full border border-dbd-border bg-dbd-panel-2 md:h-[92px] md:w-[92px]"

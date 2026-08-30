@@ -1,7 +1,7 @@
 [project]
 name = "dbd-build-generator"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered Dead by Daylight build generator"
 readme = "README.md"
 authors = [
     { name = "denisinside", email = "d.shvachka@ukma.edu.ua" }
@@ -23,6 +23,29 @@ dependencies = [
 [project.scripts]
 dbd-build-generator = "dbd_build_generator:main"
 
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.14.0",
+]
+
 [build-system]
 requires = ["uv_build>=0.12.1,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src", "parsers"]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = [".venv", "chroma_db", "frontend"]
+
+[tool.ruff.lint]
+# Pinned explicitly so CI does not start failing when ruff changes defaults.
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+# The codebase separates the import block with two blank lines.
+lines-after-imports = 2
+known-first-party = ["chroma_loader", "generate_build", "schemas", "wiki_utils", "media_mirror"]

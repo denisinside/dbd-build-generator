@@ -43,10 +43,11 @@ def main():
     )
     print(
         "Successfully ingested into ChromaDB: "
-        f"{chroma_counts['perks']} perk docs, "
-        f"{chroma_counts['killer_docs']} killer docs, "
-        f"{chroma_counts['survivor_docs']} survivor docs, "
-        f"{chroma_counts['item_docs']} item/addon docs "
+        f"{chroma_counts['perks']} perk chunks, "
+        f"{chroma_counts['mechanics']} mechanics chunks, "
+        f"{chroma_counts['killer_docs']} killer chunks, "
+        f"{chroma_counts['survivor_docs']} survivor chunks, "
+        f"{chroma_counts['item_docs']} item/addon chunks "
         f"(total {chroma_counts['total']})."
     )
 

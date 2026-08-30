@@ -1,120 +1,71 @@
 "use client"
 
 import { FormEvent, useEffect, useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { LoaderCircle, Sparkles } from "lucide-react"
-import { BuildPage } from "@/components/dbd/build-page"
-import { adaptGeneratedBuild } from "@/lib/build-adapter"
-import type { BuildSummary, GeneratedBuild } from "@/types/build"
-
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+import { Footer } from "@/components/dbd/footer"
+import { buildPath, fetchHistory, generateBuild } from "@/lib/api"
+import type { BuildSummary } from "@/types/build"
 
 
 export default function Page() {
+  const router = useRouter()
   const [prompt, setPrompt] = useState("")
   const [history, setHistory] = useState<BuildSummary[]>([])
-  const [selectedBuild, setSelectedBuild] = useState<GeneratedBuild | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [loadingMessage, setLoadingMessage] = useState(
-    "Researching meta and generating build via AI...",
-  )
+  const [generating, setGenerating] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    loadHistory()
-  }, [])
+    // Navigating to a build unmounts this page, so late responses are dropped.
+    let cancelled = false
 
-  async function loadHistory() {
-    setHistoryLoading(true)
+    async function loadHistory() {
+      setHistoryLoading(true)
 
-    try {
-      const response = await fetch(`${API_URL}/api/builds`)
-      if (!response.ok) {
-        throw new Error("Could not load build history.")
+      try {
+        const builds = await fetchHistory()
+
+        if (!cancelled) {
+          setHistory(builds)
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(getErrorMessage(requestError))
+        }
+      } finally {
+        if (!cancelled) {
+          setHistoryLoading(false)
+        }
       }
-
-      const builds: BuildSummary[] = await response.json()
-      setHistory(builds)
-    } catch (requestError) {
-      setError(getErrorMessage(requestError))
-    } finally {
-      setHistoryLoading(false)
     }
-  }
+
+    loadHistory()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleGenerate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError("")
-    setLoadingMessage("Researching meta and generating build via AI...")
-    setLoading(true)
+    setGenerating(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/builds/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt }),
-      })
-      const data = await response.json()
+      const build = await generateBuild(prompt)
 
-      if (!response.ok) {
-        throw new Error(data.detail ?? "Build generation failed.")
-      }
-
-      const build = data as GeneratedBuild
-      setSelectedBuild(build)
-      setHistory((current) => [
-        {
-          id: build.id,
-          build_title: build.build_title,
-          character_name: build.character_name,
-          role: build.role,
-          build_score: build.build_score,
-          created_at: build.created_at,
-        },
-        ...current,
-      ])
+      // Every build lives at its own URL, so it can be shared straight away.
+      router.push(buildPath(build.id))
     } catch (requestError) {
       setError(getErrorMessage(requestError))
-    } finally {
-      setLoading(false)
+      setGenerating(false)
     }
   }
 
-  async function openBuild(buildId: string) {
-    setError("")
-    setLoadingMessage("Loading saved build...")
-    setLoading(true)
-
-    try {
-      const response = await fetch(`${API_URL}/api/builds/${buildId}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.detail ?? "Could not load this build.")
-      }
-
-      setSelectedBuild(data as GeneratedBuild)
-    } catch (requestError) {
-      setError(getErrorMessage(requestError))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return <LoadingView message={loadingMessage} />
-  }
-
-  if (selectedBuild) {
-    return (
-      <BuildPage
-        build={adaptGeneratedBuild(selectedBuild)}
-        onBack={() => setSelectedBuild(null)}
-      />
-    )
+  if (generating) {
+    return <LoadingView />
   }
 
   return (
@@ -192,10 +143,9 @@ export default function Page() {
           ) : (
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {history.map((build) => (
-                <button
+                <Link
                   key={build.id}
-                  type="button"
-                  onClick={() => openBuild(build.id)}
+                  href={buildPath(build.id)}
                   className="group rounded-lg border border-dbd-border bg-dbd-panel p-5 text-left transition hover:-translate-y-1 hover:border-dbd-purple/60 hover:shadow-[0_12px_35px_-22px_var(--dbd-purple)]"
                 >
                   <span className="text-xs font-semibold uppercase tracking-wider text-dbd-purple">
@@ -209,25 +159,27 @@ export default function Page() {
                     <span>Score {build.build_score}/10</span>
                     <time dateTime={build.created_at}>{formatDate(build.created_at)}</time>
                   </div>
-                </button>
+                </Link>
               ))}
             </div>
           )}
         </section>
       </section>
+
+      <Footer />
     </main>
   )
 }
 
 
-function LoadingView({ message }: { message: string }) {
+function LoadingView() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
       <AtmosphericBackground />
       <div className="flex flex-col items-center text-center">
         <LoaderCircle className="h-12 w-12 animate-spin text-dbd-purple" aria-hidden />
         <p className="mt-6 font-[family-name:var(--font-oswald)] text-xl font-semibold uppercase tracking-wide text-dbd-text">
-          {message}
+          Researching meta and generating build via AI...
         </p>
         <p className="mt-2 text-sm text-dbd-muted">This can take a minute.</p>
       </div>

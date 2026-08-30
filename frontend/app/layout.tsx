@@ -14,10 +14,14 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+
 export const metadata: Metadata = {
+  // Needed so relative Open Graph URLs and the generated preview image
+  // resolve to absolute links when a build is shared.
+  metadataBase: new URL(SITE_URL),
   title: 'DBD Build Generator',
   description: 'AI-powered Dead by Daylight build generator and build history',
-  generator: 'v0.app',
   icons: {
     icon: [
       {

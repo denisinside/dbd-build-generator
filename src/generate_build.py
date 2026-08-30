@@ -1,5 +1,7 @@
+import difflib
 import json
 import os
+import re
 import sys
 import unicodedata
 from typing import Optional
@@ -61,6 +63,7 @@ ALLOWED_RAG_CATEGORIES = {
     "killer_power",
     "killer_lore",
     "survivor_lore",
+    "game_mechanics",
 }
 
 # Map common LLM mistakes to canonical Chroma categories.
@@ -75,6 +78,9 @@ RAG_CATEGORY_ALIASES = {
     "power": "killer_power",
     "killer_lore": "killer_lore",
     "survivor_lore": "survivor_lore",
+    "game_mechanics": "game_mechanics",
+    "mechanics": "game_mechanics",
+    "rules": "game_mechanics",
 }
 
 # Some aliases mean several categories, or "no category filter".
@@ -88,7 +94,34 @@ RAG_CATEGORY_GROUPS = {
     "loadouts": None,
 }
 
-RAG_TOP_K = 25
+# Community nicknames the wiki does not list as an official alias. Everything
+# derivable from the data (real names, in-game aliases, titles with or without
+# the leading article) is handled by build_killer_index instead.
+KILLER_ALIASES = {
+    "billy": "The Hillbilly",
+    "bubba": "The Cannibal",
+    "leatherface": "The Cannibal",
+    "myers": "The Shape",
+    "freddy": "The Nightmare",
+    "pinhead": "The Cenobite",
+    "sadako": "The Onryo",
+    "amanda": "The Pig",
+    "nemmy": "The Nemesis",
+    "wesker": "The Mastermind",
+    "xeno": "The Xenomorph",
+    "chucky": "The Good Guy",
+    "springtrap": "The Animatronic",
+    "sm": "The Skull Merchant",
+    "hux": "The Singularity",
+    "kaneki": "The Ghoul",
+    "jason": "The Slasher",
+    "vecna": "The Lich",
+    "dracula": "The Dark Lord",
+}
+
+# Chunks are ~800 tokens, so 10 results is already a large tool payload: the
+# whole result stays in the agent context for every later step.
+RAG_TOP_K = 10
 
 
 def get_mongo_db():
@@ -140,25 +173,126 @@ def find_survivor_document(db, entity_name):
     return None
 
 
-def find_killer_document(db, entity_name):
-    target = normalize_name(entity_name)
+def killer_title(killer):
+    """Canonical name of a Killer: the Title players actually use."""
+    if killer is None:
+        return None
+
+    metadata = killer.get("metadata") or {}
+    return metadata.get("Title") or killer.get("name")
+
+
+def tokenized(value):
+    """Normalized text with punctuation flattened to single spaces."""
+    text = normalize_name(value)
+    return " ".join(re.sub(r"[^0-9a-z]+", " ", text).split())
+
+
+def contains_phrase(haystack, needle):
+    """True when `needle` appears in `haystack` on whole-word boundaries."""
+    if not needle or not haystack:
+        return False
+
+    return f" {needle} " in f" {haystack} "
+
+
+# A phrase this short inside a longer sentence is more likely to be a
+# coincidence than a reference ("bear trap" is not a request for The Huntress).
+MIN_PHRASE_KEY_LENGTH = 5
+
+
+def build_killer_index(db):
+    """[(killer, exact_keys, phrase_keys) ...] built from every known name form.
+
+    `phrase_keys` is the subset safe to look for inside a longer string: real
+    names and titles only. Short in-game nicknames stay exact-match-only.
+    """
+    index = []
 
     for killer in db["killers"].find({}):
         metadata = killer.get("metadata") or {}
-        names = [
-            killer.get("name"),
-            metadata.get("Name"),
-            metadata.get("Title"),
-        ]
+        keys = []
+        phrase_keys = []
 
-        for name in names:
-            normalized = normalize_name(name)
+        for value in [killer.get("name"), metadata.get("Name"), killer_title(killer)]:
+            key = normalize_name(value)
+            # "Huntress" should resolve just as well as "The Huntress".
+            variants = [key, key[4:]] if key.startswith("the ") else [key]
 
-            if normalized == target:
-                return killer
+            for variant in variants:
+                if not variant:
+                    continue
 
-            if normalized and normalized in target:
-                return killer
+                if variant not in keys:
+                    keys.append(variant)
+
+                if len(variant) >= MIN_PHRASE_KEY_LENGTH and variant not in phrase_keys:
+                    phrase_keys.append(variant)
+
+        # In-game aliases are stored as quoted strings: '"Banshee" "Bob"'.
+        for alias in re.findall(r'"([^"]+)"', metadata.get("Game Alias(es)") or ""):
+            key = normalize_name(alias)
+
+            if key and key not in keys:
+                keys.append(key)
+
+        index.append((killer, keys, phrase_keys))
+
+    return index
+
+
+def find_killer_document(db, entity_name):
+    """Resolve a Killer by title, real name, community nickname or typo.
+
+    Deliberately staged instead of "first substring wins": an ambiguous input
+    used to silently return whichever Killer happened to be inserted first.
+    """
+    target = normalize_name(entity_name)
+
+    if not target:
+        return None
+
+    index = build_killer_index(db)
+    alias_target = KILLER_ALIASES.get(target)
+
+    # 1. Exact match on any known name form, optionally via a nickname.
+    for killer, keys, _ in index:
+        if target in keys:
+            return killer
+
+        if alias_target and normalize_name(alias_target) in keys:
+            return killer
+
+    # 2. Whole-word containment ("the shape (michael myers)"), longest wins.
+    target_tokens = tokenized(entity_name)
+    best_match = None
+    best_length = 0
+
+    for killer, _, phrase_keys in index:
+        for key in phrase_keys:
+            key_tokens = tokenized(key)
+
+            if not contains_phrase(target_tokens, key_tokens):
+                continue
+
+            if len(key_tokens) > best_length:
+                best_match = killer
+                best_length = len(key_tokens)
+
+    if best_match is not None:
+        return best_match
+
+    # 3. Last resort: closest spelling, logged so bad matches are debuggable.
+    candidates = {key: killer for killer, keys, _ in index for key in keys}
+    closest = difflib.get_close_matches(target, list(candidates), n=1, cutoff=0.85)
+
+    if closest:
+        killer = candidates[closest[0]]
+        print(
+            f"  Fuzzy Killer match: '{entity_name}' -> "
+            f"'{killer_title(killer)}' (via '{closest[0]}')"
+        )
+        return killer
 
     return None
 
@@ -200,6 +334,77 @@ def find_killer_addon(killer, entity_name):
     return None
 
 
+def find_item_type_document(db, entity_name):
+    """Resolve an item category, tolerating singular/plural ("Med-Kit")."""
+    target = normalize_name(entity_name)
+
+    if not target:
+        return None
+
+    for item_type in db["items_addons"].find({}):
+        type_name = normalize_name(item_type.get("type_name"))
+
+        if type_name == target:
+            return item_type
+
+        if type_name.rstrip("s") == target.rstrip("s"):
+            return item_type
+
+    return None
+
+
+def list_item_type_names(db):
+    return [
+        item_type.get("type_name")
+        for item_type in db["items_addons"].find({}, {"type_name": 1})
+    ]
+
+
+def find_perk_character(db, entity_name):
+    target = normalize_name(entity_name)
+
+    for perk in db["perks"].find({}, {"character": 1}):
+        character = perk.get("character")
+
+        if character and normalize_name(character) == target:
+            return character
+
+    return None
+
+
+def resolve_owner(db, role, owner):
+    """Canonical Chroma `owner` value for an add-on/item/lore owner.
+
+    Add-ons are only meaningful together with their owner: without this filter
+    a search for "chase add-on" returns add-ons from all 44 Killers and the
+    model has to guess which ones it is allowed to use.
+    """
+    target = normalize_name(owner)
+
+    if not target:
+        return None
+
+    # Owners of the role-wide game_mechanics chunks.
+    for literal in ["Killers", "Survivors", "Perks", "Perk Classes"]:
+        if normalize_name(literal) == target:
+            return literal
+
+    if role == "Killer":
+        return killer_title(find_killer_document(db, owner))
+
+    item_type = find_item_type_document(db, owner)
+
+    if item_type is not None:
+        return item_type.get("type_name")
+
+    survivor = find_survivor_document(db, owner)
+
+    if survivor is not None:
+        return survivor.get("name")
+
+    return find_perk_character(db, owner)
+
+
 def normalize_rag_category(category):
     if category is None:
         return None, None
@@ -223,13 +428,22 @@ def search_dbd_rag(
     query: str,
     role: str,
     category: Optional[str] = None,
+    owner: Optional[str] = None,
 ) -> str:
-    """Search DbD vector knowledge by role and optional category.
+    """Search DbD vector knowledge by role, optional category and optional owner.
 
-    Allowed category values:
-    perk, item, addon, killer_power, killer_lore, survivor_lore.
-    Leave category null to search all categories for that role.
-    Returns the top 20 matching chunks.
+    Allowed category values: perk, item, addon, killer_power, killer_lore,
+    survivor_lore, game_mechanics. Leave category null to search all categories
+    for that role.
+
+    owner narrows results to the entity a chunk belongs to, and is the only
+    reliable way to see the add-ons you are actually allowed to use:
+    - Killer role: a Killer title, e.g. "The Huntress".
+    - Survivor role: an item category ("Med-Kits"), a Survivor name, or a perk
+      character name.
+    Always pass owner when searching for add-ons.
+
+    Returns up to 10 matching chunks.
     """
     if role not in {"Survivor", "Killer"}:
         return "Error: role must be Survivor or Killer."
@@ -243,12 +457,33 @@ def search_dbd_rag(
             f"Use one of: {allowed}. Or leave category null."
         )
 
+    canonical_owner = None
+
+    if owner:
+        db = get_mongo_db()
+        canonical_owner = resolve_owner(db, role, owner)
+
+        if canonical_owner is None:
+            if role == "Killer":
+                hint = "a Killer title such as 'The Huntress'"
+            else:
+                hint = (
+                    "an item category ("
+                    + ", ".join(list_item_type_names(db))
+                    + "), a Survivor name, or a perk character name"
+                )
+
+            return f"Error: unknown owner '{owner}'. Use {hint}. Or leave owner null."
+
     filters = [{"role": {"$eq": role}}]
 
     if canonical_category is not None:
         filters.append({"category": {"$eq": canonical_category}})
     elif category_group is not None:
         filters.append({"category": {"$in": category_group}})
+
+    if canonical_owner is not None:
+        filters.append({"owner": {"$eq": canonical_owner}})
 
     where = filters[0] if len(filters) == 1 else {"$and": filters}
     collection = get_chroma_collection()
@@ -266,10 +501,14 @@ def search_dbd_rag(
         metadata = metadatas[index] if index < len(metadatas) else {}
         lines.append(
             f"{index + 1}. {metadata.get('entity_name')} "
-            f"[{metadata.get('category')}, {metadata.get('role')}]\n{document}"
+            f"[{metadata.get('category')}, owner: {metadata.get('owner')}]"
+            f"\n{document}"
         )
 
-    return "\n\n".join(lines) if lines else "No matching DbD knowledge found."
+    if not lines:
+        return "No matching DbD knowledge found."
+
+    return "\n\n".join(lines)
 
 
 @tool
@@ -449,8 +688,12 @@ The requested role is {role}. All prose must be written in {output_language}.
 Research rules:
 - Use search_dbd_rag for grounded mechanics and synergies.
 - search_dbd_rag category must be one of: perk, item, addon, killer_power,
-  killer_lore, survivor_lore. Prefer null when unsure instead of inventing
-  categories like builds, perks, or items_addons.
+  killer_lore, survivor_lore, game_mechanics. Prefer null when unsure instead
+  of inventing categories like builds, perks, or items_addons.
+- Always pass the owner argument when searching for add-ons: the Killer title
+  for a Killer build, or the item category for a Survivor build. Add-ons only
+  exist for one owner, and an unfiltered add-on search returns add-ons you are
+  not allowed to use.
 - Use search_web_meta for current meta ideas when useful.
 - Validate every selected perk, character, item, addon, and counter Killer with
   lookup_mongo_entity before recommending it.
@@ -601,8 +844,8 @@ STRICT OUTPUT RULES:
 """.strip()
 
 
-def canonicalize_and_validate_build(build, expected_role):
-    db = get_mongo_db()
+def canonicalize_and_validate_build(build, expected_role, db=None):
+    db = db if db is not None else get_mongo_db()
     data = build.model_dump()
     errors = []
 
@@ -780,8 +1023,8 @@ def entity_name(value):
     return value
 
 
-def enrich_build_entity_details(data):
-    db = get_mongo_db()
+def enrich_build_entity_details(data, db=None):
+    db = db if db is not None else get_mongo_db()
     data = dict(data)
 
     if data["role"] == "Survivor":
@@ -790,7 +1033,10 @@ def enrich_build_entity_details(data):
         character = find_killer_document(db, data["character_name"])
 
     metadata = (character or {}).get("metadata") or {}
+    # *_path is the locally mirrored image; *_url stays as a runtime fallback
+    # for anyone who has not run download_media.py yet.
     data["character_portrait_url"] = metadata.get("portrait_url")
+    data["character_portrait_path"] = metadata.get("portrait_path")
 
     enriched_perks = []
     for perk_value in data["perks"]:
@@ -800,6 +1046,7 @@ def enrich_build_entity_details(data):
             {
                 "name": perk_name,
                 "icon_url": (perk or {}).get("icon_url"),
+                "icon_path": (perk or {}).get("icon_path"),
                 "description": (perk or {}).get("description"),
             }
         )
@@ -826,6 +1073,7 @@ def enrich_build_entity_details(data):
                 {
                     "name": addon_name,
                     "icon_url": (addon or {}).get("icon_url"),
+                    "icon_path": (addon or {}).get("icon_path"),
                     "description": (addon or {}).get("description"),
                     "rarity": (addon or {}).get("rarity"),
                 }
@@ -836,6 +1084,7 @@ def enrich_build_entity_details(data):
                 "kit_title": kit["kit_title"],
                 "item_name": kit.get("item_name"),
                 "item_icon_url": (item or {}).get("icon_url"),
+                "item_icon_path": (item or {}).get("icon_path"),
                 "item_description": (item or {}).get("description"),
                 "item_rarity": (item or {}).get("rarity"),
                 "addons": enriched_addons,
@@ -853,6 +1102,7 @@ def enrich_build_entity_details(data):
                 {
                     **counter,
                     "portrait_url": killer_metadata.get("portrait_url"),
+                    "portrait_path": killer_metadata.get("portrait_path"),
                 }
             )
 

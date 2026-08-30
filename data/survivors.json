@@ -10,7 +10,8 @@
         "Gender": "Man",
         "Role": "Nervous Leader",
         "Origin": "American",
-        "CharID": "S01"
+        "CharID": "S01",
+        "portrait_path": "/media/survivors/dwight-fairfield.png"
       },
       "sections": {
         "Overview": {
@@ -42,7 +43,8 @@
         "Gender": "Woman",
         "Role": "Energetic Athlete",
         "Origin": "American",
-        "CharID": "S02"
+        "CharID": "S02",
+        "portrait_path": "/media/survivors/meg-thomas.png"
       },
       "sections": {
         "Overview": {
@@ -75,7 +77,8 @@
         "Gender": "Woman",
         "Role": "Studious Botanist",
         "Origin": "Canadian",
-        "CharID": "S03"
+        "CharID": "S03",
+        "portrait_path": "/media/survivors/claudette-morel.png"
       },
       "sections": {
         "Overview": {
@@ -109,7 +112,8 @@
         "Gender": "Man",
         "Role": "Solitary Survivalist",
         "Origin": "South Korean",
-        "CharID": "S04"
+        "CharID": "S04",
+        "portrait_path": "/media/survivors/jake-park.png"
       },
       "sections": {
         "Overview": {
@@ -145,7 +149,8 @@
         "Role": "Urban Artist",
         "Origin": "Swedish",
         "DLC": "The Last Breath Chapter",
-        "CharID": "S05"
+        "CharID": "S05",
+        "portrait_path": "/media/survivors/nea-karlsson.png"
       },
       "sections": {
         "Overview": {
@@ -176,7 +181,8 @@
         "Role": "Determined Survivor",
         "Origin": "American",
         "DLC": "The HALLOWEEN® Chapter",
-        "CharID": "S06"
+        "CharID": "S06",
+        "portrait_path": "/media/survivors/laurie-strode.png"
       },
       "sections": {
         "Overview": {
@@ -208,7 +214,8 @@
         "Origin": "Argentinian of Italian descent",
         "DLC": "Of Flesh and Mud",
         "Cost": "2,250 Iridescent Shards 125 Auric Cells",
-        "CharID": "S07"
+        "CharID": "S07",
+        "portrait_path": "/media/survivors/ace-visconti.png"
       },
       "sections": {
         "Overview": {
@@ -239,7 +246,8 @@
         "Role": "Old Soldier",
         "Origin": "American",
         "DLC": "Left Behind (Chapter)",
-        "CharID": "S08"
+        "CharID": "S08",
+        "portrait_path": "/media/survivors/bill-overbeck.png"
       },
       "sections": {
         "Overview": {
@@ -270,7 +278,8 @@
         "Origin": "Chinese",
         "DLC": "Spark of Madness",
         "Cost": "2,250 Iridescent Shards 125 Auric Cells",
-        "CharID": "S09"
+        "CharID": "S09",
+        "portrait_path": "/media/survivors/feng-min.png"
       },
       "sections": {
         "Overview": {
@@ -303,7 +312,8 @@
         "Role": "Rugged Scrapper",
         "Origin": "English",
         "DLC": "A Lullaby for the Dark",
-        "CharID": "S10"
+        "CharID": "S10",
+        "portrait_path": "/media/survivors/david-king.png"
       },
       "sections": {
         "Overview": {
@@ -338,7 +348,8 @@
         "Origin": "American",
         "DLC": "A Nightmare on Elm Street™",
         "Cost": "500 Auric Cells",
-        "CharID": "S11"
+        "CharID": "S11",
+        "portrait_path": "/media/survivors/quentin-smith.png"
       },
       "sections": {
         "Overview": {
@@ -370,7 +381,8 @@
         "Origin": "African American",
         "DLC": "The SAW™ Chapter",
         "Cost": "500 Auric Cells",
-        "CharID": "S12"
+        "CharID": "S12",
+        "portrait_path": "/media/survivors/david-tapp.png"
       },
       "sections": {
         "Overview": {
@@ -400,7 +412,8 @@
         "Origin": "American",
         "DLC": "Curtain Call",
         "Cost": "2,250 Iridescent Shards 125 Auric Cells",
-        "CharID": "S13"
+        "CharID": "S13",
+        "portrait_path": "/media/survivors/kate-denson.png"
       },
       "sections": {
         "Overview": {
@@ -432,7 +445,8 @@
         "Origin": "Jamaican",
         "DLC": "Shattered Bloodline",
         "Cost": "2,250 Iridescent Shards 125 Auric Cells",
-        "CharID": "S14"
+        "CharID": "S14",
+        "portrait_path": "/media/survivors/adam-francis.png"
       },
       "sections": {
         "Overview": {
@@ -462,7 +476,8 @@
         "Origin": "Canadian of Norwegian descent",
         "DLC": "Darkness Among Us",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S15"
+        "CharID": "S15",
+        "portrait_path": "/media/survivors/jeff-johansen.png"
       },
       "sections": {
         "Overview": {
@@ -493,7 +508,8 @@
         "Origin": "Latin American",
         "DLC": "Demise of the Faithful",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S16"
+        "CharID": "S16",
+        "portrait_path": "/media/survivors/jane-romero.png"
       },
       "sections": {
         "Overview": {
@@ -526,7 +542,8 @@
         "Origin": "American",
         "DLC": "Ash vs Evil Dead",
         "Cost": "500 Auric Cells",
-        "CharID": "S17"
+        "CharID": "S17",
+        "portrait_path": "/media/survivors/ash-williams.png"
       },
       "sections": {
         "Overview": {
@@ -560,7 +577,8 @@
         "Origin": "American",
         "DLC": "Stranger Things",
         "Cost": "500 Auric Cells",
-        "CharID": "S18"
+        "CharID": "S18",
+        "portrait_path": "/media/survivors/nancy-wheeler.png"
       },
       "sections": {
         "Overview": {
@@ -595,7 +613,8 @@
         "Origin": "American",
         "DLC": "Stranger Things",
         "Cost": "500 Auric Cells",
-        "CharID": "S19"
+        "CharID": "S19",
+        "portrait_path": "/media/survivors/steve-harrington.png"
       },
       "sections": {
         "Overview": {
@@ -631,7 +650,8 @@
         "Origin": "Japanese",
         "DLC": "Cursed Legacy",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S20"
+        "CharID": "S20",
+        "portrait_path": "/media/survivors/yui-kimura.png"
       },
       "sections": {
         "Overview": {
@@ -666,7 +686,8 @@
         "Origin": "Lebanese American",
         "DLC": "Chains of Hate",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S21"
+        "CharID": "S21",
+        "portrait_path": "/media/survivors/zarina-kassir.png"
       },
       "sections": {
         "Overview": {
@@ -699,7 +720,8 @@
         "Origin": "American",
         "DLC": "Silent Hill (Chapter)",
         "Cost": "500 Auric Cells",
-        "CharID": "S22"
+        "CharID": "S22",
+        "portrait_path": "/media/survivors/cheryl-mason.png"
       },
       "sections": {
         "Overview": {
@@ -731,7 +753,8 @@
         "Origin": "German",
         "DLC": "Descend Beyond",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S23"
+        "CharID": "S23",
+        "portrait_path": "/media/survivors/felix-richter.png"
       },
       "sections": {
         "Overview": {
@@ -763,7 +786,8 @@
         "Origin": "French, Malagasy",
         "DLC": "A Binding of Kin",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S24"
+        "CharID": "S24",
+        "portrait_path": "/media/survivors/lodie-rakoto.png"
       },
       "sections": {
         "Overview": {
@@ -797,7 +821,8 @@
         "Origin": "South Korean",
         "DLC": "All-Kill",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S25"
+        "CharID": "S25",
+        "portrait_path": "/media/survivors/lee-yun-jin.png"
       },
       "sections": {
         "Overview": {
@@ -832,7 +857,8 @@
         "Origin": "American",
         "DLC": "Resident Evil™",
         "Cost": "500 Auric Cells",
-        "CharID": "S26"
+        "CharID": "S26",
+        "portrait_path": "/media/survivors/jill-valentine.png"
       },
       "sections": {
         "Overview": {
@@ -865,7 +891,8 @@
         "Origin": "American",
         "DLC": "Resident Evil™",
         "Cost": "500 Auric Cells",
-        "CharID": "S27"
+        "CharID": "S27",
+        "portrait_path": "/media/survivors/leon-scott-kennedy.png"
       },
       "sections": {
         "Overview": {
@@ -899,7 +926,8 @@
         "Origin": "American",
         "DLC": "Hour of the Witch",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S28"
+        "CharID": "S28",
+        "portrait_path": "/media/survivors/mikaela-reid.png"
       },
       "sections": {
         "Overview": {
@@ -932,7 +960,8 @@
         "Origin": "American of Hispanic descent",
         "DLC": "Portrait of a Murder",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S29"
+        "CharID": "S29",
+        "portrait_path": "/media/survivors/jonah-vasquez.png"
       },
       "sections": {
         "Overview": {
@@ -965,7 +994,8 @@
         "Origin": "Japanese",
         "DLC": "Sadako Rising",
         "Cost": "500 Auric Cells",
-        "CharID": "S30"
+        "CharID": "S30",
+        "portrait_path": "/media/survivors/yoichi-asakawa.png"
       },
       "sections": {
         "Overview": {
@@ -999,7 +1029,8 @@
         "Origin": "Canadian of Indian descent",
         "DLC": "Roots of Dread",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S31"
+        "CharID": "S31",
+        "portrait_path": "/media/survivors/haddie-kaur.png"
       },
       "sections": {
         "Overview": {
@@ -1033,7 +1064,8 @@
         "Origin": "Unknown (Redacted)",
         "DLC": "Resident Evil™: PROJECT W",
         "Cost": "500 Auric Cells",
-        "CharID": "S32"
+        "CharID": "S32",
+        "portrait_path": "/media/survivors/ada-wong.png"
       },
       "sections": {
         "Overview": {
@@ -1068,7 +1100,8 @@
         "Origin": "American",
         "DLC": "Resident Evil™: PROJECT W",
         "Cost": "500 Auric Cells",
-        "CharID": "S33"
+        "CharID": "S33",
+        "portrait_path": "/media/survivors/rebecca-chambers.png"
       },
       "sections": {
         "Overview": {
@@ -1101,7 +1134,8 @@
         "Origin": "Italian",
         "DLC": "Forged in Fog",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S34"
+        "CharID": "S34",
+        "portrait_path": "/media/survivors/vittorio-toscano.png"
       },
       "sections": {
         "Overview": {
@@ -1135,7 +1169,8 @@
         "Origin": "Brazilian",
         "DLC": "Tools of Torment",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S35"
+        "CharID": "S35",
+        "portrait_path": "/media/survivors/thalita-lyra.png"
       },
       "sections": {
         "Overview": {
@@ -1167,7 +1202,8 @@
         "Origin": "Brazilian",
         "DLC": "Tools of Torment",
         "Cost": "4,500 Iridescent Shards 250 Auric Cells",
-        "CharID": "S36"
+        "CharID": "S36",
+        "portrait_path": "/media/survivors/renato-lyra.png"
       },
       "sections": {
         "Overview": {
@@ -1199,7 +1235,8 @@
         "Origin": "Proxima Centauri C",
         "DLC": "End Transmission",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
-        "CharID": "S37"
+        "CharID": "S37",
+        "portrait_path": "/media/survivors/gabriel-soma.png"
       },
       "sections": {
         "Overview": {
@@ -1235,7 +1272,8 @@
         "DLC": "Nicolas Cage (Chapter)",
         "Cost": "500 Auric Cells",
         "CharID": "S38",
-        "Theme Filename": "Nicolas Cage_Survivors_Theme_Music.ogg"
+        "Theme Filename": "Nicolas Cage_Survivors_Theme_Music.ogg",
+        "portrait_path": "/media/survivors/nicolas-cage.png"
       },
       "sections": {
         "Overview": {
@@ -1268,7 +1306,8 @@
         "Origin": "American",
         "DLC": "Alien",
         "Cost": "500 Auric Cells",
-        "CharID": "S39"
+        "CharID": "S39",
+        "portrait_path": "/media/survivors/ellen-ripley.png"
       },
       "sections": {
         "Overview": {
@@ -1301,7 +1340,8 @@
         "Origin": "American",
         "DLC": "Alan Wake® (Chapter)",
         "Cost": "500 Auric Cells",
-        "CharID": "S40"
+        "CharID": "S40",
+        "portrait_path": "/media/survivors/alan-wake.png"
       },
       "sections": {
         "Overview": {
@@ -1334,7 +1374,8 @@
         "Origin": "American",
         "DLC": "All Things Wicked",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
-        "CharID": "S41"
+        "CharID": "S41",
+        "portrait_path": "/media/survivors/sable-ward.png"
       },
       "sections": {
         "Overview": {
@@ -1368,7 +1409,8 @@
         "Origin": "Oerth (D&D World)",
         "DLC": "Dungeons & Dragons",
         "Cost": "500 Auric Cells",
-        "CharID": "S42"
+        "CharID": "S42",
+        "portrait_path": "/media/survivors/aestri-yazar-baermar-uraz.png"
       },
       "sections": {
         "Overview": {
@@ -1400,7 +1442,8 @@
         "Origin": "English",
         "DLC": "Tomb Raider™",
         "Cost": "500 Auric Cells",
-        "CharID": "S43"
+        "CharID": "S43",
+        "portrait_path": "/media/survivors/lara-croft.png"
       },
       "sections": {
         "Overview": {
@@ -1433,7 +1476,8 @@
         "Origin": "Wallachian (Romania)",
         "DLC": "Castlevania",
         "Cost": "500 Auric Cells",
-        "CharID": "S44"
+        "CharID": "S44",
+        "portrait_path": "/media/survivors/trevor-belmont.png"
       },
       "sections": {
         "Overview": {
@@ -1467,7 +1511,8 @@
         "Origin": "Scottish",
         "DLC": "Doomed Course",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
-        "CharID": "S45"
+        "CharID": "S45",
+        "portrait_path": "/media/survivors/taurie-cain.png"
       },
       "sections": {
         "Overview": {
@@ -1503,7 +1548,8 @@
         "DLC": "Steady Pulse",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
         "CharID": "S46",
-        "Theme Filename": "Steady Pulse_Survivors_Theme_Music.ogg"
+        "Theme Filename": "Steady Pulse_Survivors_Theme_Music.ogg",
+        "portrait_path": "/media/survivors/orela-rose.png"
       },
       "sections": {
         "Overview": {
@@ -1537,7 +1583,8 @@
         "Origin": "American",
         "DLC": "The Walking Dead",
         "Cost": "500 Auric Cells",
-        "CharID": "S47"
+        "CharID": "S47",
+        "portrait_path": "/media/survivors/rick-grimes.png"
       },
       "sections": {
         "Overview": {
@@ -1570,7 +1617,8 @@
         "Origin": "African American",
         "DLC": "The Walking Dead",
         "Cost": "500 Auric Cells",
-        "CharID": "S48"
+        "CharID": "S48",
+        "portrait_path": "/media/survivors/michonne-grimes.png"
       },
       "sections": {
         "Overview": {
@@ -1604,7 +1652,8 @@
         "Origin": "Thai",
         "DLC": "Sinister Grace",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
-        "CharID": "S49"
+        "CharID": "S49",
+        "portrait_path": "/media/survivors/vee-boonyasak.png"
       },
       "sections": {
         "Overview": {
@@ -1638,7 +1687,8 @@
         "Origin": "American",
         "DLC": "Stranger Things Chapter 2",
         "Cost": "500 Auric Cells",
-        "CharID": "S50"
+        "CharID": "S50",
+        "portrait_path": "/media/survivors/dustin-henderson.png"
       },
       "sections": {
         "Overview": {
@@ -1674,7 +1724,8 @@
         "Origin": "American",
         "DLC": "Stranger Things Chapter 2",
         "Cost": "500 Auric Cells",
-        "CharID": "S51"
+        "CharID": "S51",
+        "portrait_path": "/media/survivors/eleven.png"
       },
       "sections": {
         "Overview": {
@@ -1709,7 +1760,8 @@
         "Origin": "South Korean",
         "DLC": "All-Kill: Comeback",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
-        "CharID": "S52"
+        "CharID": "S52",
+        "portrait_path": "/media/survivors/kwon-tae-young.png"
       },
       "sections": {
         "Overview": {
@@ -1741,7 +1793,8 @@
         "Origin": "Native American",
         "DLC": "The Life Road",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
-        "CharID": "S53"
+        "CharID": "S53",
+        "portrait_path": "/media/survivors/shane-wiigwaas.png"
       },
       "sections": {
         "Overview": {
@@ -1771,7 +1824,8 @@
         "Origin": "Unknown",
         "DLC": "Chorus of Sin",
         "Cost": "9,000 Iridescent Shards 500 Auric Cells",
-        "CharID": "S54"
+        "CharID": "S54",
+        "portrait_path": "/media/survivors/aurora-stardotter.png"
       },
       "sections": {
         "Overview": {

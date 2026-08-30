@@ -1,5 +1,6 @@
 import os
 import sys
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,16 +22,41 @@ from generate_build import enrich_build_entity_details, run_generate_build  # no
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = "dbd_generator"
+DEFAULT_ALLOWED_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
 
 mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
 database = mongo_client[DB_NAME]
 generated_builds = database["generated_builds"]
 
-app = FastAPI(title="DBD Build Generator API")
+
+def get_allowed_origins():
+    """Browser origins allowed to call this API.
+
+    Deployment blocker if hardcoded: a frontend on any real domain gets a CORS
+    error, so this has to come from the environment.
+    """
+    raw = os.getenv("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGINS)
+    origins = [origin.strip().rstrip("/") for origin in raw.split(",")]
+
+    return [origin for origin in origins if origin]
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    mongo_client.admin.command("ping")
+    generated_builds.create_index([("created_at", DESCENDING)])
+    yield
+    mongo_client.close()
+
+
+app = FastAPI(title="DBD Build Generator API", lifespan=lifespan)
+
+allowed_origins = get_allowed_origins()
+print(f"CORS allowed origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,25 +79,33 @@ def serialize_build(document):
 
 
 def needs_entity_descriptions(document):
+    """True when a stored build predates the current enrichment fields.
+
+    `icon_path` is part of the check so builds saved before the wiki images
+    were mirrored locally pick up the local copies the next time they open.
+    """
+    if "character_portrait_path" not in document:
+        return True
+
     for perk in document.get("perks", []):
-        if "description" not in perk:
+        if "description" not in perk or "icon_path" not in perk:
             return True
 
     for kit in document.get("item_kits", []):
         if "item_description" not in kit or "item_rarity" not in kit:
             return True
 
+        if "item_icon_path" not in kit:
+            return True
+
         for addon in kit.get("addons", []):
             if "description" not in addon or "rarity" not in addon:
                 return True
 
+            if "icon_path" not in addon:
+                return True
+
     return False
-
-
-@app.on_event("startup")
-def prepare_mongodb():
-    mongo_client.admin.command("ping")
-    generated_builds.create_index([("created_at", DESCENDING)])
 
 
 @app.post("/api/builds/generate")
@@ -122,6 +156,7 @@ def get_build(build_id: str):
             {
                 "$set": {
                     "character_portrait_url": document["character_portrait_url"],
+                    "character_portrait_path": document["character_portrait_path"],
                     "perks": document["perks"],
                     "item_kits": document["item_kits"],
                     "counter_killers": document.get("counter_killers"),

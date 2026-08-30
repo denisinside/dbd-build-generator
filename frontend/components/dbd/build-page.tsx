@@ -1,3 +1,4 @@
+import Link from "next/link"
 import type { Build } from "@/types/build"
 import { PageTitle } from "./page-title"
 import { BuildHeader } from "./build-header"
@@ -9,14 +10,15 @@ import { Footer } from "./footer"
 
 interface BuildPageProps {
   build: Build
-  onBack: () => void
+  /** Where the back link goes. Defaults to the generator page. */
+  backHref?: string
 }
 
 /**
  * The full build-details template. Everything it renders comes from the
  * single `build` prop — swap that object to display a different build.
  */
-export function BuildPage({ build, onBack }: BuildPageProps) {
+export function BuildPage({ build, backHref = "/" }: BuildPageProps) {
   return (
     <main className="relative min-h-screen">
       {/* Atmospheric background */}
@@ -26,13 +28,12 @@ export function BuildPage({ build, onBack }: BuildPageProps) {
       />
 
       <div className="mx-auto w-full max-w-4xl px-4 pb-14 md:px-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="mt-6 text-sm font-medium text-dbd-muted transition hover:text-dbd-text"
+        <Link
+          href={backHref}
+          className="mt-6 inline-block text-sm font-medium text-dbd-muted transition hover:text-dbd-text"
         >
-          ← Back to Generator / History
-        </button>
+          ← Generator / History
+        </Link>
 
         <PageTitle title={build.title} />
 

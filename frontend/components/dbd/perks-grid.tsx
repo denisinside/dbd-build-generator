@@ -15,6 +15,7 @@ export function PerksGrid({ perks }: PerksGridProps) {
           <EntityTooltip name={perk.name} description={perk.description}>
             <SmartImage
               src={perk.image}
+              fallbackSrc={perk.imageFallback}
               alt={perk.name}
               fallbackLabel={perk.name}
               className="h-12 w-12 rounded-full border border-dbd-border bg-dbd-panel-2 md:h-[52px] md:w-[52px]"

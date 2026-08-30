@@ -1,12 +1,16 @@
 ﻿.env
+.env.local
+.env.*.local
 .venv/
 chroma_db/
 __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
-dist/
-build/
+# Anchored to the repo root: an unanchored build/ also swallowed the
+# frontend/app/build route.
+/dist/
+/build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -15,3 +19,4 @@ Thumbs.db
 *.log
 data/_path_check.json
 frontend/tsconfig.tsbuildinfo
+media/

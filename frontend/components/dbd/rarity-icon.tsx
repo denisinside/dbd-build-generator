@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 
 interface RarityIconProps {
   src?: string
+  fallbackSrc?: string
   alt: string
   rarity?: string
   showPlus?: boolean
@@ -14,6 +15,7 @@ interface RarityIconProps {
 
 export function RarityIcon({
   src,
+  fallbackSrc,
   alt,
   rarity,
   showPlus = false,
@@ -38,6 +40,7 @@ export function RarityIcon({
 
       <SmartImage
         src={src}
+        fallbackSrc={fallbackSrc}
         alt={alt}
         fallbackLabel={fallbackLabel ?? alt}
         className="relative h-full w-full object-contain"
