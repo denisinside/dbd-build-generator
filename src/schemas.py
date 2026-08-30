@@ -24,6 +24,27 @@ LucideIcon = Literal[
 ]
 
 
+# The classifier's language choice is interpolated straight into the research
+# system prompt, so it must not be free text coming from a model that just read
+# the user's message. A Literal makes structured output pick from this list and
+# closes that injection path. Russian is left out deliberately.
+OutputLanguage = Literal[
+    "English",
+    "Ukrainian",
+    "Polish",
+    "German",
+    "French",
+    "Spanish",
+    "Portuguese",
+    "Italian",
+    "Turkish",
+    "Czech",
+    "Japanese",
+    "Korean",
+    "Chinese",
+]
+
+
 class BuildRequestAnalysis(BaseModel):
     is_build_request: bool = Field(
         description="True only when the user clearly asks for a DbD build"
@@ -32,8 +53,8 @@ class BuildRequestAnalysis(BaseModel):
         default=None,
         description="Requested DbD role; null when missing or unclear",
     )
-    output_language: str = Field(
-        description="English name of the language to use for generated prose"
+    output_language: OutputLanguage = Field(
+        description="Language to use for generated prose; English when unsupported"
     )
     rejection_message: Optional[str] = Field(
         default=None,
@@ -42,11 +63,17 @@ class BuildRequestAnalysis(BaseModel):
 
     @model_validator(mode="after")
     def validate_request_analysis(self):
+        # "Make me the strongest build" is a build request with no role, and
+        # models answer it with is_build_request=True plus a rejection message
+        # explaining the role is missing. Raising here turned that ordinary
+        # prompt into a 502; it is a rejection, so treat it as one.
         if self.is_build_request and self.role is None:
-            raise ValueError("Accepted build requests must have a role")
+            self.is_build_request = False
 
         if not self.is_build_request and not self.rejection_message:
-            raise ValueError("Rejected requests must have a rejection message")
+            self.rejection_message = (
+                "Tell me whether you want a Survivor or a Killer build."
+            )
 
         return self
 

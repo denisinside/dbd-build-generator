@@ -1,16 +1,23 @@
+import asyncio
+import json
 import os
+import queue
+import re
 import sys
+import threading
 import time
 import traceback
 from collections import defaultdict, deque
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from bson import ObjectId
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pymongo import DESCENDING
 
@@ -33,7 +40,19 @@ DEFAULT_ALLOWED_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
 GENERATE_LIMIT_PER_HOUR = int(os.getenv("GENERATE_LIMIT_PER_HOUR", "5"))
 RATE_LIMIT_WINDOW_SECONDS = 3600
 
+# One generation holds a worker thread for minutes. Without a cap, enough of
+# them starve the thread pool and even GET /api/builds stops answering.
+GENERATE_CONCURRENCY = int(os.getenv("GENERATE_CONCURRENCY", "3"))
+
+FEED_DEFAULT_LIMIT = 30
+FEED_MAX_LIMIT = 100
+
+# Anonymous owner token minted by the browser. Not a credential: it only
+# decides which builds a client calls "mine" until real accounts exist.
+SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
 _recent_generates = defaultdict(deque)
+_generate_slots = threading.Semaphore(GENERATE_CONCURRENCY)
 
 
 def builds_collection():
@@ -51,6 +70,14 @@ def get_allowed_origins():
     origins = [origin.strip().rstrip("/") for origin in raw.split(",")]
 
     return [origin for origin in origins if origin]
+
+
+def clean_session_id(raw):
+    """The caller's session token, or None when it is missing or malformed."""
+    if isinstance(raw, str) and SESSION_ID_PATTERN.match(raw):
+        return raw
+
+    return None
 
 
 def enforce_generate_limit(request: Request):
@@ -88,9 +115,27 @@ def enforce_generate_limit(request: Request):
         del _recent_generates[stale]
 
 
+@contextmanager
+def generate_slot():
+    """One of the limited generation slots, or a 503 that says so out loud."""
+    if not _generate_slots.acquire(blocking=False):
+        raise HTTPException(
+            status_code=503,
+            detail="The generator is busy right now. Try again in a moment.",
+            headers={"Retry-After": "30"},
+        )
+
+    try:
+        yield
+    finally:
+        _generate_slots.release()
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     builds_collection().create_index([("created_at", DESCENDING)])
+    # The "my builds" panel filters by session on every page load.
+    builds_collection().create_index([("session_id", 1), ("created_at", DESCENDING)])
     yield
     builds_collection().database.client.close()
 
@@ -103,7 +148,8 @@ print(f"CORS allowed origins: {allowed_origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    # No cookies or auth headers are used, so credentials stay off.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -116,6 +162,8 @@ class GenerateBuildRequest(BaseModel):
 def serialize_build(document):
     result = dict(document)
     result["id"] = str(result.pop("_id"))
+    # An owner token is not public data: the feed is shared, the token is not.
+    result.pop("session_id", None)
 
     created_at = result.get("created_at")
     if isinstance(created_at, datetime):
@@ -154,10 +202,14 @@ def needs_entity_descriptions(document):
     return False
 
 
-@app.post("/api/builds/generate", dependencies=[Depends(enforce_generate_limit)])
-def generate_build(request: GenerateBuildRequest):
+def create_build(prompt, session_id=None, on_step=None):
+    """Run the pipeline, store the build, return it ready for the client.
+
+    Raises HTTPException so both the plain and the streaming endpoint report
+    the same failures the same way.
+    """
     try:
-        build = run_generate_build(request.prompt)
+        build = run_generate_build(prompt, on_step=on_step)
     except ValueError as error:
         # The model could not produce a build that survives validation.
         traceback.print_exc()
@@ -178,12 +230,12 @@ def generate_build(request: GenerateBuildRequest):
         ) from error
 
     if "error" in build:
-        error = build["error"]
-        raise HTTPException(status_code=400, detail=error["message"])
+        raise HTTPException(status_code=400, detail=build["error"]["message"])
 
     document = {
         **build,
-        "prompt": request.prompt,
+        "prompt": prompt,
+        "session_id": session_id,
         "created_at": datetime.now(timezone.utc),
     }
     insert_result = builds_collection().insert_one(document)
@@ -192,8 +244,123 @@ def generate_build(request: GenerateBuildRequest):
     return serialize_build(document)
 
 
+@app.get("/health")
+def health():
+    """Liveness plus a real MongoDB round-trip, for compose and any proxy."""
+    try:
+        get_mongo_db().client.admin.command("ping")
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Database unavailable") from error
+
+    return {"status": "ok"}
+
+
+@app.post("/api/builds/generate", dependencies=[Depends(enforce_generate_limit)])
+def generate_build(
+    request: GenerateBuildRequest,
+    x_session_id: Optional[str] = Header(default=None),
+):
+    with generate_slot():
+        return create_build(request.prompt, clean_session_id(x_session_id))
+
+
+def sse(event, payload):
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def start_build_worker(prompt, session_id, release_slot):
+    """Run one build on its own thread, reporting progress through a queue.
+
+    The build deliberately outlives a disconnected client: it is already paid
+    for by the time the first event goes out, and it still gets saved.
+    """
+    events = queue.Queue()
+
+    def worker():
+        try:
+            result = create_build(
+                prompt,
+                session_id,
+                on_step=lambda stage, detail: events.put(
+                    ("step", {"stage": stage, "detail": detail})
+                ),
+            )
+            events.put(("build", result))
+        except HTTPException as failure:
+            events.put(("error", {"status": failure.status_code, "detail": failure.detail}))
+        except Exception:
+            traceback.print_exc()
+            events.put(
+                ("error", {"status": 500, "detail": "The build service failed unexpectedly."})
+            )
+        finally:
+            # Released before the sentinel, so a client that retries the
+            # instant its stream ends never races the release into a 503. It
+            # is still tied to the worker, not the stream, so hanging up
+            # cannot free the slot while the build is still running.
+            release_slot()
+            events.put(None)
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    return events
+
+
+async def drain_events(events):
+    while True:
+        item = await asyncio.to_thread(events.get)
+
+        if item is None:
+            return
+
+        yield sse(*item)
+
+
+@app.post("/api/builds/stream", dependencies=[Depends(enforce_generate_limit)])
+def stream_build(
+    request: GenerateBuildRequest,
+    x_session_id: Optional[str] = Header(default=None),
+):
+    # Acquired here rather than inside the generator so a busy generator is a
+    # plain 503 instead of an error delivered mid-stream.
+    if not _generate_slots.acquire(blocking=False):
+        raise HTTPException(
+            status_code=503,
+            detail="The generator is busy right now. Try again in a moment.",
+            headers={"Retry-After": "30"},
+        )
+
+    # The thread starts here, so the slot is released even if the client never
+    # reads a single byte of the stream.
+    events = start_build_worker(
+        request.prompt,
+        clean_session_id(x_session_id),
+        _generate_slots.release,
+    )
+
+    return StreamingResponse(
+        drain_events(events),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.get("/api/builds")
-def list_builds():
+def list_builds(
+    session: Optional[str] = Query(default=None),
+    limit: int = Query(default=FEED_DEFAULT_LIMIT, ge=1, le=FEED_MAX_LIMIT),
+):
+    """The shared feed, or one client's own builds when `session` is given."""
+    query = {}
+
+    if session is not None:
+        owner = clean_session_id(session)
+
+        if owner is None:
+            return []
+
+        query["session_id"] = owner
+
     projection = {
         "build_title": 1,
         "character_name": 1,
@@ -201,7 +368,12 @@ def list_builds():
         "build_score": 1,
         "created_at": 1,
     }
-    documents = builds_collection().find({}, projection).sort("created_at", DESCENDING)
+    documents = (
+        builds_collection()
+        .find(query, projection)
+        .sort("created_at", DESCENDING)
+        .limit(limit)
+    )
     return [serialize_build(document) for document in documents]
 
 

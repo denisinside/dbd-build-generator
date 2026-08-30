@@ -1,60 +1,83 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from "react"
+import { FormEvent, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LoaderCircle, Sparkles } from "lucide-react"
 import { Footer } from "@/components/dbd/footer"
-import { buildPath, fetchHistory, generateBuild } from "@/lib/api"
+import { buildPath, fetchFeed, fetchMyBuilds, streamBuild } from "@/lib/api"
+import type { BuildStep } from "@/lib/api"
+import { getSessionId } from "@/lib/session"
 import type { BuildSummary } from "@/types/build"
+
+
+// A build takes a minute to make, so anything faster than this only adds load.
+const FEED_REFRESH_MS = 10_000
+
+const STAGE_LABELS: Record<string, string> = {
+  classifying: "Request",
+  research: "Research",
+  drafting: "Drafting",
+  validating: "Validation",
+  enriching: "Finishing",
+}
 
 
 export default function Page() {
   const router = useRouter()
   const [prompt, setPrompt] = useState("")
-  const [history, setHistory] = useState<BuildSummary[]>([])
+  const [feed, setFeed] = useState<BuildSummary[]>([])
+  const [mine, setMine] = useState<BuildSummary[]>([])
+  const [steps, setSteps] = useState<BuildStep[]>([])
   const [generating, setGenerating] = useState(false)
-  const [historyLoading, setHistoryLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
     // Navigating to a build unmounts this page, so late responses are dropped.
     let cancelled = false
 
-    async function loadHistory() {
-      setHistoryLoading(true)
-
+    async function refresh() {
       try {
-        const builds = await fetchHistory()
+        const sessionId = getSessionId()
+        const [everyone, own] = await Promise.all([
+          fetchFeed(),
+          fetchMyBuilds(sessionId),
+        ])
 
         if (!cancelled) {
-          setHistory(builds)
+          setFeed(everyone)
+          setMine(own)
         }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(getErrorMessage(requestError))
-        }
+      } catch {
+        // A failed poll keeps whatever was already on screen; the next tick
+        // retries on its own.
       } finally {
         if (!cancelled) {
-          setHistoryLoading(false)
+          setLoading(false)
         }
       }
     }
 
-    loadHistory()
+    refresh()
+    const timer = setInterval(refresh, FEED_REFRESH_MS)
 
     return () => {
       cancelled = true
+      clearInterval(timer)
     }
   }, [])
 
   async function handleGenerate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError("")
+    setSteps([])
     setGenerating(true)
 
     try {
-      const build = await generateBuild(prompt)
+      const build = await streamBuild(prompt, getSessionId(), (step) =>
+        setSteps((current) => [...current, step]),
+      )
 
       // Every build lives at its own URL, so it can be shared straight away.
       router.push(buildPath(build.id))
@@ -65,14 +88,14 @@ export default function Page() {
   }
 
   if (generating) {
-    return <LoadingView />
+    return <GeneratingView steps={steps} />
   }
 
   return (
     <main className="relative min-h-screen overflow-hidden">
       <AtmosphericBackground />
 
-      <section className="mx-auto flex w-full max-w-5xl flex-col px-4 py-14 md:px-6 md:py-20">
+      <section className="mx-auto flex w-full max-w-6xl flex-col px-4 py-14 md:px-6 md:py-20">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-dbd-purple">
             Dead by Daylight
@@ -125,45 +148,25 @@ export default function Page() {
           </p>
         ) : null}
 
-        <section className="mt-16" aria-labelledby="history-heading">
-          <h2
-            id="history-heading"
-            className="font-[family-name:var(--font-oswald)] text-2xl font-bold uppercase tracking-wide text-dbd-text"
-          >
-            Build History
-          </h2>
-          <div className="mt-3 h-px bg-dbd-border" />
-
-          {historyLoading ? (
-            <p className="mt-8 text-sm text-dbd-muted">Loading build history...</p>
-          ) : history.length === 0 ? (
-            <p className="mt-8 text-sm text-dbd-muted">
-              No builds yet. Generate your first build above.
-            </p>
-          ) : (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {history.map((build) => (
-                <Link
-                  key={build.id}
-                  href={buildPath(build.id)}
-                  className="group rounded-lg border border-dbd-border bg-dbd-panel p-5 text-left transition hover:-translate-y-1 hover:border-dbd-purple/60 hover:shadow-[0_12px_35px_-22px_var(--dbd-purple)]"
-                >
-                  <span className="text-xs font-semibold uppercase tracking-wider text-dbd-purple">
-                    {build.role}
-                  </span>
-                  <h3 className="mt-2 font-[family-name:var(--font-oswald)] text-xl font-semibold uppercase text-dbd-text">
-                    {build.build_title}
-                  </h3>
-                  <p className="mt-2 text-sm text-dbd-muted">{build.character_name}</p>
-                  <div className="mt-5 flex items-center justify-between text-xs text-dbd-muted">
-                    <span>Score {build.build_score}/10</span>
-                    <time dateTime={build.created_at}>{formatDate(build.created_at)}</time>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+        <div className="mt-16 grid gap-10 lg:grid-cols-[1.6fr_1fr]">
+          <BuildColumn
+            id="feed-heading"
+            title="Live Feed"
+            live
+            builds={feed}
+            loading={loading}
+            emptyText="No builds yet. Generate the first one above."
+            columns="sm:grid-cols-2"
+          />
+          <BuildColumn
+            id="mine-heading"
+            title="Your Builds"
+            builds={mine}
+            loading={loading}
+            emptyText="Builds you generate in this browser show up here."
+            columns=""
+          />
+        </div>
       </section>
 
       <Footer />
@@ -172,16 +175,122 @@ export default function Page() {
 }
 
 
-function LoadingView() {
+interface BuildColumnProps {
+  id: string
+  title: string
+  builds: BuildSummary[]
+  loading: boolean
+  emptyText: string
+  columns: string
+  live?: boolean
+}
+
+function BuildColumn({
+  id,
+  title,
+  builds,
+  loading,
+  emptyText,
+  columns,
+  live,
+}: BuildColumnProps) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+    <section aria-labelledby={id}>
+      <div className="flex items-center gap-3">
+        <h2
+          id={id}
+          className="font-[family-name:var(--font-oswald)] text-2xl font-bold uppercase tracking-wide text-dbd-text"
+        >
+          {title}
+        </h2>
+        {live ? (
+          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-dbd-purple">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-dbd-purple opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-dbd-purple" />
+            </span>
+            Live
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-3 h-px bg-dbd-border" />
+
+      {loading ? (
+        <p className="mt-8 text-sm text-dbd-muted">Loading...</p>
+      ) : builds.length === 0 ? (
+        <p className="mt-8 text-sm text-dbd-muted">{emptyText}</p>
+      ) : (
+        <div className={`mt-6 grid gap-4 ${columns}`}>
+          {builds.map((build) => (
+            <Link
+              key={build.id}
+              href={buildPath(build.id)}
+              className="group rounded-lg border border-dbd-border bg-dbd-panel p-5 text-left transition hover:-translate-y-1 hover:border-dbd-purple/60 hover:shadow-[0_12px_35px_-22px_var(--dbd-purple)]"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wider text-dbd-purple">
+                {build.role}
+              </span>
+              <h3 className="mt-2 font-[family-name:var(--font-oswald)] text-xl font-semibold uppercase text-dbd-text">
+                {build.build_title}
+              </h3>
+              <p className="mt-2 text-sm text-dbd-muted">{build.character_name}</p>
+              <div className="mt-5 flex items-center justify-between text-xs text-dbd-muted">
+                <span>Score {build.build_score}/10</span>
+                <time dateTime={build.created_at}>{formatDate(build.created_at)}</time>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+
+function GeneratingView({ steps }: { steps: BuildStep[] }) {
+  const endOfLog = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    endOfLog.current?.scrollIntoView({ block: "nearest" })
+  }, [steps.length])
+
+  const current = steps[steps.length - 1]
+
+  return (
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-14">
       <AtmosphericBackground />
-      <div className="flex flex-col items-center text-center">
+      <div className="flex w-full max-w-2xl flex-col items-center text-center">
         <LoaderCircle className="h-12 w-12 animate-spin text-dbd-purple" aria-hidden />
         <p className="mt-6 font-[family-name:var(--font-oswald)] text-xl font-semibold uppercase tracking-wide text-dbd-text">
-          Researching meta and generating build via AI...
+          {current ? STAGE_LABELS[current.stage] ?? current.stage : "Starting up"}
         </p>
-        <p className="mt-2 text-sm text-dbd-muted">This can take a minute.</p>
+        <p className="mt-2 text-sm text-dbd-muted">This usually takes a minute.</p>
+
+        <div
+          aria-live="polite"
+          className="mt-8 max-h-72 w-full overflow-y-auto rounded-xl border border-dbd-border bg-dbd-panel/70 p-4 text-left"
+        >
+          {steps.length === 0 ? (
+            <p className="text-sm text-dbd-muted">Waking the research agent...</p>
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {steps.map((step, index) => (
+                <li
+                  key={index}
+                  className={`flex gap-3 text-sm transition ${
+                    index === steps.length - 1 ? "text-dbd-text" : "text-dbd-muted/70"
+                  }`}
+                >
+                  <span className="shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-dbd-purple">
+                    {STAGE_LABELS[step.stage] ?? step.stage}
+                  </span>
+                  <span className="break-words">{step.detail}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <div ref={endOfLog} />
+        </div>
       </div>
     </main>
   )

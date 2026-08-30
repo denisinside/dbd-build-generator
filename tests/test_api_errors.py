@@ -16,7 +16,7 @@ def call_generate(monkeypatch, outcome):
 
 
 def raises(error):
-    def outcome(_prompt):
+    def outcome(_prompt, **_kwargs):
         raise error
 
     return outcome
@@ -39,7 +39,9 @@ def test_upstream_failure_is_502(monkeypatch):
 def test_a_rejected_prompt_is_still_400(monkeypatch):
     failure = call_generate(
         monkeypatch,
-        lambda _prompt: {"error": {"code": "invalid_build_request", "message": "Не білд."}},
+        lambda _prompt, **_kwargs: {
+            "error": {"code": "invalid_build_request", "message": "Не білд."}
+        },
     )
 
     assert failure.status_code == 400

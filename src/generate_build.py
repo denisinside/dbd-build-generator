@@ -2,6 +2,7 @@ import difflib
 import json
 import os
 import sys
+import time
 from typing import Optional
 
 import chromadb
@@ -118,14 +119,35 @@ KILLER_ALIASES = {
     "dracula": "The Dark Lord",
 }
 
-# Chunks are ~800 tokens, so 10 results is already a large tool payload: the
-# whole result stays in the agent context for every later step.
-RAG_TOP_K = 10
+# Every tool result stays in the agent context for all remaining steps, so the
+# payload is paid for once per step that follows it. 5 trimmed chunks carry the
+# same answers as 10 full ones at roughly a quarter of the tokens.
+RAG_TOP_K = 5
+RAG_CHUNK_CHARS = 700
 
 # Without a timeout a hung OpenRouter call holds a request thread forever, and
 # the default thread pool is all it takes to wedge the whole API.
-LLM_TIMEOUT_SECONDS = int(os.getenv("LLM_TIMEOUT_SECONDS", "120"))
+LLM_TIMEOUT_SECONDS = int(os.getenv("LLM_TIMEOUT_SECONDS", "90"))
 LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "2"))
+
+# Wall-clock budget for one build. Without it, 12 research steps plus 3
+# structured attempts can each burn a full LLM timeout and hold the request
+# for half an hour.
+BUILD_DEADLINE_SECONDS = int(os.getenv("BUILD_DEADLINE_SECONDS", "240"))
+RESEARCH_MAX_STEPS = int(os.getenv("RESEARCH_MAX_STEPS", "12"))
+
+
+class Deadline:
+    """Shared wall clock for one build request."""
+
+    def __init__(self, seconds=BUILD_DEADLINE_SECONDS):
+        self.expires_at = time.monotonic() + seconds
+
+    def remaining(self):
+        return self.expires_at - time.monotonic()
+
+    def expired(self):
+        return self.remaining() <= 0
 
 
 def build_llm():
@@ -136,7 +158,11 @@ def build_llm():
         model=LLM_MODEL,
         api_key=OPENROUTER_API_KEY,
         temperature=0,
-        request_timeout=LLM_TIMEOUT_SECONDS,
+        # ChatOpenRouter takes MILLISECONDS here (it maps to the SDK's
+        # `timeout_ms`). Passing seconds does not just shorten the timeout, it
+        # wedges the call: a sub-second budget never survives the TLS
+        # handshake, and the request hangs instead of failing.
+        request_timeout=LLM_TIMEOUT_SECONDS * 1000,
         max_retries=LLM_MAX_RETRIES,
     )
 
@@ -160,13 +186,68 @@ def get_mongo_db():
     return _mongo_db
 
 
+_chroma_collection = None
+
+
 def get_chroma_collection():
-    client = chromadb.PersistentClient(path=CHROMA_PATH)
-    embedding_function = get_openrouter_embedding_function()
-    return client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        embedding_function=embedding_function,
-    )
+    """The process-wide Chroma handle, for the same reason as the Mongo one."""
+    global _chroma_collection
+
+    if _chroma_collection is None:
+        client = chromadb.PersistentClient(path=CHROMA_PATH)
+        _chroma_collection = client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            embedding_function=get_openrouter_embedding_function(),
+        )
+
+    return _chroma_collection
+
+
+# `items_addons` is 6 documents and the perk character list is fixed, but the
+# finders below used to walk them on every tool call and every enrichment.
+# Both are static between ingests, so each is read once.
+#
+# ponytail: keyed by db identity, and the db is kept in the value so its id()
+# can never be reused. That means one entry per db object, which is one in
+# production and one per test fixture. Restarting the API is what picks up a
+# re-ingest.
+_static_lookup_cache = {}
+
+
+def _cached(db, name, build_value):
+    entry = _static_lookup_cache.setdefault(id(db), (db, {}))
+
+    if entry[0] is not db:
+        entry = (db, {})
+        _static_lookup_cache[id(db)] = entry
+
+    values = entry[1]
+
+    if name not in values:
+        values[name] = build_value()
+
+    return values[name]
+
+
+def item_types(db):
+    return _cached(db, "item_types", lambda: list(db["items_addons"].find({})))
+
+
+def perk_characters(db):
+    """Normalized character name -> the spelling stored on the perks."""
+
+    def build():
+        characters = {}
+
+        for perk in db["perks"].find({}, {"character": 1}):
+            character = perk.get("character")
+
+            if character:
+                characters.setdefault(normalize_name(character), character)
+
+        return characters
+
+    return _cached(db, "perk_characters", build)
 
 
 def find_perk_document(db, entity_name):
@@ -213,11 +294,15 @@ def find_killer_document(db, entity_name):
             return killer
 
     # 3. Last resort: closest spelling, logged so bad matches are debuggable.
-    candidates = {
-        key: document["_id"]
-        for document in db["killers"].find({}, {"search_keys": 1})
-        for key in document["search_keys"]
-    }
+    candidates = _cached(
+        db,
+        "killer_keys",
+        lambda: {
+            key: document["_id"]
+            for document in db["killers"].find({}, {"search_keys": 1})
+            for key in document["search_keys"]
+        },
+    )
     closest = difflib.get_close_matches(target, list(candidates), n=1, cutoff=0.85)
 
     if not closest:
@@ -234,7 +319,7 @@ def find_killer_document(db, entity_name):
 def find_item_document(db, entity_name):
     target = normalize_name(entity_name)
 
-    for item_type in db["items_addons"].find({}):
+    for item_type in item_types(db):
         for item in item_type.get("items", []):
             if normalize_name(item.get("name")) == target:
                 return item, item_type
@@ -275,7 +360,7 @@ def find_item_type_document(db, entity_name):
     if not target:
         return None
 
-    for item_type in db["items_addons"].find({}):
+    for item_type in item_types(db):
         type_name = normalize_name(item_type.get("type_name"))
 
         if type_name == target:
@@ -288,22 +373,11 @@ def find_item_type_document(db, entity_name):
 
 
 def list_item_type_names(db):
-    return [
-        item_type.get("type_name")
-        for item_type in db["items_addons"].find({}, {"type_name": 1})
-    ]
+    return [item_type.get("type_name") for item_type in item_types(db)]
 
 
 def find_perk_character(db, entity_name):
-    target = normalize_name(entity_name)
-
-    for perk in db["perks"].find({}, {"character": 1}):
-        character = perk.get("character")
-
-        if character and normalize_name(character) == target:
-            return character
-
-    return None
+    return perk_characters(db).get(normalize_name(entity_name))
 
 
 def resolve_owner(db, role, owner):
@@ -433,6 +507,13 @@ def search_dbd_rag(
 
     for index, document in enumerate(documents):
         metadata = metadatas[index] if index < len(metadatas) else {}
+
+        # This text is re-sent with every remaining agent step, so a full chunk
+        # is paid for many times over. The head of a chunk carries the entity
+        # and its effect; the tail is usually numbers tables and trivia.
+        if len(document) > RAG_CHUNK_CHARS:
+            document = document[:RAG_CHUNK_CHARS].rsplit(" ", 1)[0] + " ..."
+
         lines.append(
             f"{index + 1}. {metadata.get('entity_name')} "
             f"[{metadata.get('category')}, owner: {metadata.get('owner')}]"
@@ -498,7 +579,7 @@ def lookup_mongo_entity(entity_name: str, collection_name: str) -> str:
 
     target = normalize_name(entity_name)
 
-    for item_type in db["items_addons"].find({}):
+    for item_type in item_types(db):
         type_name = item_type.get("type_name")
 
         if normalize_name(type_name) == target:
@@ -585,9 +666,8 @@ Return a structured classification using these rules:
 - Infer Survivor or Killer semantically in any language. Do not use keyword
   matching. If the role is missing or genuinely ambiguous, reject the request
   and explain that the user must specify Survivor or Killer.
-- output_language is the English name of the user's language.
-- Russian output is forbidden. If the message is Russian, set output_language
-  to English and write the rejection_message in English when one is needed.
+- output_language is the user's language. Pick English whenever the user's
+  language is not one of the allowed values.
 - For a rejected request, return a short, polite rejection_message in the
   selected output_language.
 - For an accepted request, rejection_message must be null.
@@ -663,7 +743,23 @@ def message_content_to_text(content):
     return str(content)
 
 
-def run_research_agent(user_query, role, output_language):
+def tool_step_detail(tool_name, args):
+    """One readable line describing a tool call, for the progress stream."""
+    if tool_name == "search_dbd_rag":
+        owner = args.get("owner")
+        scope = f" [{owner}]" if owner else ""
+        return f"Searching the wiki index{scope}: {args.get('query')}"
+
+    if tool_name == "lookup_mongo_entity":
+        return f"Verifying {args.get('entity_name')}"
+
+    if tool_name == "search_web_meta":
+        return f"Reading community meta: {args.get('query')}"
+
+    return tool_name
+
+
+def run_research_agent(user_query, role, output_language, on_step, deadline):
     print(f"Research agent role: {role}")
     print(f"Dynamic prose language: {output_language}")
     print(f"Agent model: {LLM_MODEL}")
@@ -677,18 +773,24 @@ def run_research_agent(user_query, role, output_language):
         HumanMessage(content=user_query),
     ]
 
-    for step in range(12):
+    for step in range(RESEARCH_MAX_STEPS):
+        if deadline.expired():
+            print("Research budget spent; summarising what is already gathered.")
+            break
+
         response = agent_llm.invoke(messages)
         messages.append(response)
 
         if not response.tool_calls:
             memo = message_content_to_text(response.content)
             print(f"Research finished after {step + 1} agent steps.")
+            on_step("research", f"Research done after {step + 1} steps")
             return memo
 
         for tool_call in response.tool_calls:
             tool_name = tool_call["name"]
             print(f"  Tool: {tool_name}")
+            on_step("research", tool_step_detail(tool_name, tool_call["args"]))
             selected_tool = tools_by_name.get(tool_name)
 
             if selected_tool is None:
@@ -706,6 +808,7 @@ def run_research_agent(user_query, role, output_language):
                 )
             )
 
+    on_step("research", "Wrapping up research")
     summary_response = llm.invoke(
         messages
         + [
@@ -903,12 +1006,18 @@ def canonicalize_and_validate_build(build, expected_role, db=None):
     return DbDBuildSchema.model_validate(data), []
 
 
-def generate_grounded_build(user_query, role, output_language, research_memo):
+def generate_grounded_build(user_query, role, output_language, research_memo, on_step, deadline):
     structured_llm = build_llm().with_structured_output(DbDBuildSchema)
     errors = None
 
     for attempt in range(3):
         print(f"Structured generation attempt {attempt + 1}/3...")
+
+        if attempt == 0:
+            on_step("drafting", "Assembling the build")
+        else:
+            on_step("drafting", f"Fixing {len(errors)} grounding error(s)")
+
         prompt = build_final_prompt(
             user_query,
             role,
@@ -921,11 +1030,16 @@ def generate_grounded_build(user_query, role, output_language, research_memo):
 
         if not errors:
             print("All selected DbD entities passed MongoDB validation.")
+            on_step("validating", "Every entity verified against the wiki data")
             return canonical_build
 
         print("Grounding errors:")
         for error in errors:
             print(f"  - {error}")
+
+        # A retry costs another full model call, so it needs budget left to run.
+        if deadline.expired():
+            break
 
     raise ValueError("Could not generate a fully grounded build: " + "; ".join(errors))
 
@@ -1033,7 +1147,17 @@ def enrich_with_mongo_images(build):
 
 
 @traceable(name="generate_dbd_build", run_type="chain")
-def run_generate_build(user_query):
+def run_generate_build(user_query, on_step=None):
+    """Generate one grounded build.
+
+    `on_step(stage, detail)` is called as the pipeline advances so the caller
+    can stream progress; a build takes minutes, and a spinner with nothing
+    behind it is indistinguishable from a hang.
+    """
+    on_step = on_step or (lambda stage, detail: None)
+    deadline = Deadline()
+
+    on_step("classifying", "Reading your request")
     request_analysis = classify_build_request(user_query)
 
     if not request_analysis.is_build_request:
@@ -1051,13 +1175,23 @@ def run_generate_build(user_query):
     if role is None:
         raise ValueError("Accepted build request has no detected role")
 
-    research_memo = run_research_agent(user_query, role, output_language)
+    on_step("research", f"Researching a {role} build")
+    research_memo = run_research_agent(
+        user_query,
+        role,
+        output_language,
+        on_step,
+        deadline,
+    )
     build = generate_grounded_build(
         user_query,
         role,
         output_language,
         research_memo,
+        on_step,
+        deadline,
     )
+    on_step("enriching", "Attaching icons and descriptions")
     return enrich_with_mongo_images(build)
 
 

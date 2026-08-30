@@ -45,8 +45,12 @@ The important ones:
 MongoDB must be running (for example via Docker):
 
 ```bash
-docker run -d --name dbd-mongo -p 27017:27017 mongo:7
+docker run -d --name dbd-mongo -p 127.0.0.1:27017:27017 mongo:7
 ```
+
+Bind it to `127.0.0.1`, not `0.0.0.0`: an unauthenticated MongoDB on a public
+port is found by scanners within hours. `docker compose` does not publish the
+port at all.
 
 ## Data pipeline
 
@@ -96,7 +100,7 @@ at least once before starting it.
 ## Tests and linting
 
 ```bash
-uv run pytest          # grounding, name resolution, chunking
+uv run pytest          # grounding, pipeline, streaming, name resolution, chunking
 uv run ruff check .
 
 cd frontend
@@ -106,18 +110,42 @@ pnpm typecheck
 
 CI runs all of the above on every push and pull request.
 
+`tests/test_live_llm.py` is opt-in: it runs the real model against the real
+MongoDB and ChromaDB, so it costs money and takes minutes. It asserts
+invariants, never wording — a real model picks different perks every run, but
+it may never pick a perk that does not exist.
+
+```bash
+RUN_LIVE_TESTS=1 uv run pytest tests/test_live_llm.py -v
+```
+
 ## API
 
-- `POST /api/builds/generate` — `{ "prompt": "..." }` → full enriched build
-- `GET /api/builds` — history summaries
+- `POST /api/builds/stream` — `{ "prompt": "..." }` → Server-Sent Events:
+  `step` frames as the agent researches, then one `build` frame, or one
+  `error` frame. This is what the UI uses: a build takes about a minute, and a
+  silent connection that long is cut by most proxies (Cloudflare at 100s).
+- `POST /api/builds/generate` — the same thing without progress, for scripts
+- `GET /api/builds?limit=30` — the shared feed, newest first
+- `GET /api/builds?session=<id>` — only that client's builds
 - `GET /api/builds/{id}` — one saved build
+- `GET /health` — liveness plus a MongoDB round-trip
+
+Send `X-Session-Id` (any 8-64 char token; the UI mints a UUID per browser and
+keeps it in `localStorage`) to mark a build as yours. It is an owner tag, not a
+credential: it never appears in any response, and it is what the "Your Builds"
+panel filters on until real accounts exist.
+
+At most `GENERATE_CONCURRENCY` builds run at once; the rest get a 503 with
+`Retry-After` rather than queueing behind a minute-long request. One build has
+a `BUILD_DEADLINE_SECONDS` wall-clock budget across research and every retry.
 
 Image fields come in pairs: `icon_path` / `portrait_path` point at the local mirror under
 `/media`, and `icon_url` / `portrait_url` keep the original wiki URL as a fallback.
 
 ## Frontend routes
 
-- `/` — generator + build history
+- `/` — generator, the live feed of everyone's builds, and this browser's own
 - `/build/{id}` — one build, with Open Graph tags and a generated link-preview image, so a
   build can be shared in chat or on stream
 
