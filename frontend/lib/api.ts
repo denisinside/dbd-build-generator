@@ -1,3 +1,4 @@
+import { getAuthToken, getSessionId } from "@/lib/session"
 import type { BuildSummary, GeneratedBuild } from "@/types/build"
 
 
@@ -22,8 +23,41 @@ export interface BuildStep {
 }
 
 
-function sessionHeader(sessionId: string): Record<string, string> {
-  return sessionId ? { "X-Session-Id": sessionId } : {}
+export interface AuthUser {
+  id: string
+  provider: string
+  display_name: string | null
+  avatar_url: string | null
+}
+
+
+export interface SignInProvider {
+  id: string
+  name: string
+}
+
+
+/**
+ * Who the caller is, as far as the API is concerned.
+ *
+ * The session token is what the API verifies. The anonymous id rides along so
+ * a visitor who has not signed in still has a personal list, and so the
+ * builds they made before signing in can be claimed afterwards.
+ */
+function identityHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const token = getAuthToken()
+  const sessionId = getSessionId()
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  if (sessionId) {
+    headers["X-Session-Id"] = sessionId
+  }
+
+  return headers
 }
 
 
@@ -47,7 +81,10 @@ export async function fetchBuild(buildId: string): Promise<GeneratedBuild | null
 
 
 async function fetchSummaries(params: URLSearchParams): Promise<BuildSummary[]> {
-  const response = await fetch(`${API_URL}/api/builds?${params}`, { cache: "no-store" })
+  const response = await fetch(`${API_URL}/api/builds?${params}`, {
+    cache: "no-store",
+    headers: identityHeaders(),
+  })
 
   if (!response.ok) {
     throw new Error("Could not load builds.")
@@ -63,14 +100,68 @@ export function fetchFeed(limit = 30): Promise<BuildSummary[]> {
 }
 
 
-/** Builds generated from this browser. */
-export function fetchMyBuilds(sessionId: string): Promise<BuildSummary[]> {
-  if (!sessionId) {
-    return Promise.resolve([])
+/** The caller's own builds: their account's, or this browser's when signed out. */
+export function fetchMyBuilds(): Promise<BuildSummary[]> {
+  return fetchSummaries(new URLSearchParams({ mine: "1", limit: "30" }))
+}
+
+
+// --- sign-in ---------------------------------------------------------------
+
+
+/** Providers the API actually has credentials for. Empty means sign-in is off. */
+export async function fetchProviders(): Promise<SignInProvider[]> {
+  const response = await fetch(`${API_URL}/auth/providers`, { cache: "no-store" })
+
+  if (!response.ok) {
+    return []
   }
 
-  return fetchSummaries(new URLSearchParams({ session: sessionId, limit: "30" }))
+  return (await response.json()) as SignInProvider[]
 }
+
+
+/** Where to send the browser to start the OAuth handshake. */
+export function signInUrl(provider: string, next = "/") {
+  return `${API_URL}/auth/${provider}/login?next=${encodeURIComponent(next)}`
+}
+
+
+/** The signed-in user, or null. A rejected token is treated as signed out. */
+export async function fetchMe(): Promise<AuthUser | null> {
+  if (!getAuthToken()) {
+    return null
+  }
+
+  const response = await fetch(`${API_URL}/auth/me`, {
+    cache: "no-store",
+    headers: identityHeaders(),
+  })
+
+  if (!response.ok) {
+    return null
+  }
+
+  return (await response.json()) as AuthUser
+}
+
+
+/** Move this browser's anonymous builds onto the account that just signed in. */
+export async function claimAnonymousBuilds(): Promise<number> {
+  const response = await fetch(`${API_URL}/auth/claim`, {
+    method: "POST",
+    headers: identityHeaders(),
+  })
+
+  if (!response.ok) {
+    return 0
+  }
+
+  return ((await response.json()) as { claimed: number }).claimed
+}
+
+
+// --- generation ------------------------------------------------------------
 
 
 function parseFrame(frame: string) {
@@ -98,12 +189,11 @@ function parseFrame(frame: string) {
  */
 export async function streamBuild(
   prompt: string,
-  sessionId: string,
   onStep: (step: BuildStep) => void,
 ): Promise<GeneratedBuild> {
   const response = await fetch(`${API_URL}/api/builds/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...sessionHeader(sessionId) },
+    headers: { "Content-Type": "application/json", ...identityHeaders() },
     body: JSON.stringify({ prompt }),
   })
 

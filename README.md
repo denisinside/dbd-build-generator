@@ -39,6 +39,8 @@ The important ones:
 | `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API. **Add your deployed frontend origin**, otherwise every request from it fails CORS |
 | `OPENROUTER_API_KEY` | Chat + embeddings |
 | `OPENROUTER_CHAT_MODEL` | Agent and structured-output model |
+| `AUTH_SECRET` | Signs session tokens. Unset means sign-in is off entirely |
+| `FRONTEND_URL` | Where the OAuth callback sends the browser back to |
 | `TAVILY_API_KEY` | Optional; `search_web_meta` is skipped without it |
 | `LANGSMITH_TRACING` | Optional tracing. Enabling it sends every user prompt to LangSmith |
 
@@ -127,14 +129,48 @@ RUN_LIVE_TESTS=1 uv run pytest tests/test_live_llm.py -v
   silent connection that long is cut by most proxies (Cloudflare at 100s).
 - `POST /api/builds/generate` — the same thing without progress, for scripts
 - `GET /api/builds?limit=30` — the shared feed, newest first
-- `GET /api/builds?session=<id>` — only that client's builds
+- `GET /api/builds?mine=1` — the caller's own builds: their account's when
+  signed in, this browser's anonymous ones otherwise
 - `GET /api/builds/{id}` — one saved build
 - `GET /health` — liveness plus a MongoDB round-trip
 
 Send `X-Session-Id` (any 8-64 char token; the UI mints a UUID per browser and
-keeps it in `localStorage`) to mark a build as yours. It is an owner tag, not a
-credential: it never appears in any response, and it is what the "Your Builds"
-panel filters on until real accounts exist.
+keeps it in `localStorage`) to mark a build as yours while signed out. It is an
+owner tag, not a credential, and it never appears in any response.
+
+## Sign-in
+
+Optional, and off entirely unless `AUTH_SECRET` is set. Twitch, Discord and
+Google; each appears only once its client id and secret are configured, so a
+deployment never shows a button that cannot work.
+
+- `GET /auth/providers` — what the UI should offer; `[]` means sign-in is off
+- `GET /auth/{provider}/login?next=/path` — starts the handshake
+- `GET /auth/{provider}/callback` — provider lands here, then bounces to
+  `FRONTEND_URL/auth/callback#token=...`
+- `GET /auth/me` — the signed-in account
+- `POST /auth/claim` — moves this browser's anonymous builds onto the account
+
+Sessions are Bearer tokens rather than cookies, so the frontend and the API can
+live on different sites without depending on `SameSite=None`, which Safari's
+ITP and the third-party cookie wind-down keep eroding. Send
+`Authorization: Bearer <token>`. If you settle on one domain later, a cookie is
+the stricter option and the swap is confined to `src/auth.py`.
+
+Provider access tokens are read once, for the profile, and dropped: an account
+holds an id, a display name and an avatar URL, nothing more. There is no
+refresh flow to maintain and nothing worth stealing.
+
+Signing in also changes what the hourly cap counts. Anonymous callers are
+capped per IP, which punishes everyone behind one CGNAT address and is
+sidestepped by any VPN; signed-in callers are capped per account.
+`generate_limit_per_hour` on a user document raises the ceiling for one
+account, and `disabled: true` locks it out on the next request — the user
+document is read on every authenticated call, so neither waits for a token to
+expire.
+
+Accounts are per provider: signing in with Twitch and later with Google makes
+two accounts. Linking them is a later problem.
 
 At most `GENERATE_CONCURRENCY` builds run at once; the rest get a 503 with
 `Retry-After` rather than queueing behind a minute-long request. One build has

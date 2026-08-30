@@ -5,9 +5,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LoaderCircle, Sparkles } from "lucide-react"
 import { Footer } from "@/components/dbd/footer"
-import { buildPath, fetchFeed, fetchMyBuilds, streamBuild } from "@/lib/api"
-import type { BuildStep } from "@/lib/api"
-import { getSessionId } from "@/lib/session"
+import { SignIn } from "@/components/dbd/sign-in"
+import { SmartImage } from "@/components/dbd/smart-image"
+import { buildPath, fetchFeed, fetchMe, fetchMyBuilds, streamBuild } from "@/lib/api"
+import type { AuthUser, BuildStep } from "@/lib/api"
 import type { BuildSummary } from "@/types/build"
 
 
@@ -29,9 +30,12 @@ export default function Page() {
   const [feed, setFeed] = useState<BuildSummary[]>([])
   const [mine, setMine] = useState<BuildSummary[]>([])
   const [steps, setSteps] = useState<BuildStep[]>([])
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  // Bumped on sign-out so the lists reload as the anonymous browser again.
+  const [identity, setIdentity] = useState(0)
 
   useEffect(() => {
     // Navigating to a build unmounts this page, so late responses are dropped.
@@ -39,15 +43,16 @@ export default function Page() {
 
     async function refresh() {
       try {
-        const sessionId = getSessionId()
-        const [everyone, own] = await Promise.all([
+        const [everyone, own, me] = await Promise.all([
           fetchFeed(),
-          fetchMyBuilds(sessionId),
+          fetchMyBuilds(),
+          fetchMe(),
         ])
 
         if (!cancelled) {
           setFeed(everyone)
           setMine(own)
+          setUser(me)
         }
       } catch {
         // A failed poll keeps whatever was already on screen; the next tick
@@ -66,7 +71,7 @@ export default function Page() {
       cancelled = true
       clearInterval(timer)
     }
-  }, [])
+  }, [identity])
 
   async function handleGenerate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -75,7 +80,7 @@ export default function Page() {
     setGenerating(true)
 
     try {
-      const build = await streamBuild(prompt, getSessionId(), (step) =>
+      const build = await streamBuild(prompt, (step) =>
         setSteps((current) => [...current, step]),
       )
 
@@ -96,6 +101,10 @@ export default function Page() {
       <AtmosphericBackground />
 
       <section className="mx-auto flex w-full max-w-6xl flex-col px-4 py-14 md:px-6 md:py-20">
+        <div className="flex justify-end">
+          <SignIn user={user} onSignOut={() => setIdentity((n) => n + 1)} />
+        </div>
+
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-dbd-purple">
             Dead by Daylight
@@ -163,7 +172,11 @@ export default function Page() {
             title="Your Builds"
             builds={mine}
             loading={loading}
-            emptyText="Builds you generate in this browser show up here."
+            emptyText={
+              user
+                ? "Builds you generate show up here."
+                : "Builds you generate in this browser show up here. Sign in to keep them."
+            }
             columns=""
           />
         </div>
@@ -234,6 +247,17 @@ function BuildColumn({
                 {build.build_title}
               </h3>
               <p className="mt-2 text-sm text-dbd-muted">{build.character_name}</p>
+              {build.author_name ? (
+                <p className="mt-3 flex items-center gap-2 text-xs text-dbd-muted">
+                  <SmartImage
+                    src={build.author_avatar_url ?? undefined}
+                    alt=""
+                    fallbackLabel={build.author_name}
+                    className="h-5 w-5 rounded-full"
+                  />
+                  {build.author_name}
+                </p>
+              ) : null}
               <div className="mt-5 flex items-center justify-between text-xs text-dbd-muted">
                 <span>Score {build.build_score}/10</span>
                 <time dateTime={build.created_at}>{formatDate(build.created_at)}</time>

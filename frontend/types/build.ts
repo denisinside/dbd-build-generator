@@ -183,4 +183,7 @@ export interface BuildSummary {
   role: Role
   build_score: number
   created_at: string
+  /** Denormalised at creation, so the feed can credit an author without a join. */
+  author_name?: string | null
+  author_avatar_url?: string | null
 }

@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pymongo import DESCENDING
+from starlette.middleware.sessions import SessionMiddleware
 
 
 load_dotenv()
@@ -27,6 +28,7 @@ load_dotenv()
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root / "src"))
 
+import auth  # noqa: E402
 from generate_build import (  # noqa: E402
     enrich_build_entity_details,
     get_mongo_db,
@@ -80,29 +82,40 @@ def clean_session_id(raw):
     return None
 
 
-def enforce_generate_limit(request: Request):
-    """Per-client hourly cap on the one endpoint that costs money.
+def enforce_generate_limit(request: Request, user=Depends(auth.optional_user)):
+    """Hourly cap on the one endpoint that costs money.
+
+    Signed-in callers are counted per account, which is the whole reason the
+    cap is worth having: an IP bucket punishes everyone behind one CGNAT
+    address and is sidestepped by any VPN. `generate_limit_per_hour` on a user
+    document raises the ceiling for a single account, for streamers.
 
     ponytail: in-process counter, so the cap is per worker. Run uvicorn with
-    --proxy-headers behind a proxy, or every client looks like the proxy.
-    Move to Redis if you ever run more than one worker.
+    --proxy-headers behind a proxy, or every anonymous client looks like the
+    proxy. Move to Redis if you ever run more than one worker.
     """
-    if GENERATE_LIMIT_PER_HOUR <= 0:
+    if user is not None:
+        limit = user.get("generate_limit_per_hour") or GENERATE_LIMIT_PER_HOUR
+        client = f"user:{user['_id']}"
+    else:
+        limit = GENERATE_LIMIT_PER_HOUR
+        client = f"ip:{request.client.host if request.client else 'unknown'}"
+
+    if limit <= 0:
         return
 
-    client = request.client.host if request.client else "unknown"
     now = time.monotonic()
     hits = _recent_generates[client]
 
     while hits and now - hits[0] > RATE_LIMIT_WINDOW_SECONDS:
         hits.popleft()
 
-    if len(hits) >= GENERATE_LIMIT_PER_HOUR:
+    if len(hits) >= limit:
         retry_after = int(RATE_LIMIT_WINDOW_SECONDS - (now - hits[0])) + 1
         raise HTTPException(
             status_code=429,
             detail=(
-                f"Too many builds. The limit is {GENERATE_LIMIT_PER_HOUR} per hour. "
+                f"Too many builds. The limit is {limit} per hour. "
                 f"Try again in {retry_after // 60 + 1} min."
             ),
             headers={"Retry-After": str(retry_after)},
@@ -134,8 +147,14 @@ def generate_slot():
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     builds_collection().create_index([("created_at", DESCENDING)])
-    # The "my builds" panel filters by session on every page load.
+    # The "my builds" panel filters by owner on every page load, and an
+    # anonymous browser and a signed-in account are two different owners.
     builds_collection().create_index([("session_id", 1), ("created_at", DESCENDING)])
+    builds_collection().create_index([("user_id", 1), ("created_at", DESCENDING)])
+
+    if auth.AUTH_SECRET:
+        auth.ensure_indexes()
+
     yield
     builds_collection().database.client.close()
 
@@ -148,11 +167,29 @@ print(f"CORS allowed origins: {allowed_origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    # No cookies or auth headers are used, so credentials stay off.
+    # Sessions are Bearer tokens, not cookies, so no ambient credentials ever
+    # ride along with a cross-origin request.
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if auth.AUTH_SECRET:
+    # Only holds the OAuth `state` for the seconds between redirecting out to
+    # a provider and coming back. The callback is a top-level navigation, so
+    # "lax" is sent even when the provider is a different site.
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=auth.AUTH_SECRET,
+        session_cookie="dbd_oauth",
+        max_age=600,
+        same_site="lax",
+        https_only=auth.FRONTEND_URL.startswith("https"),
+    )
+    app.include_router(auth.router)
+    print(f"Sign-in providers: {sorted(auth.PROVIDERS) or 'none configured'}")
+else:
+    print("AUTH_SECRET is not set: sign-in is disabled, builds stay anonymous.")
 
 
 class GenerateBuildRequest(BaseModel):
@@ -162,8 +199,10 @@ class GenerateBuildRequest(BaseModel):
 def serialize_build(document):
     result = dict(document)
     result["id"] = str(result.pop("_id"))
-    # An owner token is not public data: the feed is shared, the token is not.
+    # Owner identifiers are not public data: the feed is shared, they are not.
+    # `author_name` is the denormalised, publishable half of `user_id`.
     result.pop("session_id", None)
+    result.pop("user_id", None)
 
     created_at = result.get("created_at")
     if isinstance(created_at, datetime):
@@ -202,7 +241,7 @@ def needs_entity_descriptions(document):
     return False
 
 
-def create_build(prompt, session_id=None, on_step=None):
+def create_build(prompt, session_id=None, user=None, on_step=None):
     """Run the pipeline, store the build, return it ready for the client.
 
     Raises HTTPException so both the plain and the streaming endpoint report
@@ -236,6 +275,12 @@ def create_build(prompt, session_id=None, on_step=None):
         **build,
         "prompt": prompt,
         "session_id": session_id,
+        "user_id": user["_id"] if user else None,
+        # Denormalised so the shared feed can credit an author without a join
+        # per row. A renamed account keeps its old name on old builds, which
+        # is the right trade for a feed.
+        "author_name": user.get("display_name") if user else None,
+        "author_avatar_url": user.get("avatar_url") if user else None,
         "created_at": datetime.now(timezone.utc),
     }
     insert_result = builds_collection().insert_one(document)
@@ -259,16 +304,17 @@ def health():
 def generate_build(
     request: GenerateBuildRequest,
     x_session_id: Optional[str] = Header(default=None),
+    user=Depends(auth.optional_user),
 ):
     with generate_slot():
-        return create_build(request.prompt, clean_session_id(x_session_id))
+        return create_build(request.prompt, clean_session_id(x_session_id), user)
 
 
 def sse(event, payload):
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def start_build_worker(prompt, session_id, release_slot):
+def start_build_worker(prompt, session_id, user, release_slot):
     """Run one build on its own thread, reporting progress through a queue.
 
     The build deliberately outlives a disconnected client: it is already paid
@@ -281,6 +327,7 @@ def start_build_worker(prompt, session_id, release_slot):
             result = create_build(
                 prompt,
                 session_id,
+                user,
                 on_step=lambda stage, detail: events.put(
                     ("step", {"stage": stage, "detail": detail})
                 ),
@@ -320,6 +367,7 @@ async def drain_events(events):
 def stream_build(
     request: GenerateBuildRequest,
     x_session_id: Optional[str] = Header(default=None),
+    user=Depends(auth.optional_user),
 ):
     # Acquired here rather than inside the generator so a busy generator is a
     # plain 503 instead of an error delivered mid-stream.
@@ -335,6 +383,7 @@ def stream_build(
     events = start_build_worker(
         request.prompt,
         clean_session_id(x_session_id),
+        user,
         _generate_slots.release,
     )
 
@@ -347,19 +396,29 @@ def stream_build(
 
 @app.get("/api/builds")
 def list_builds(
-    session: Optional[str] = Query(default=None),
+    mine: bool = Query(default=False),
     limit: int = Query(default=FEED_DEFAULT_LIMIT, ge=1, le=FEED_MAX_LIMIT),
+    x_session_id: Optional[str] = Header(default=None),
+    user=Depends(auth.optional_user),
 ):
-    """The shared feed, or one client's own builds when `session` is given."""
+    """The shared feed, or the caller's own builds when `mine` is set.
+
+    "Own" means the signed-in account when there is one, and this browser's
+    anonymous token otherwise. The token travels in a header rather than the
+    query string so it stays out of access logs and Referer headers.
+    """
     query = {}
 
-    if session is not None:
-        owner = clean_session_id(session)
+    if mine:
+        if user is not None:
+            query["user_id"] = user["_id"]
+        else:
+            session_id = clean_session_id(x_session_id)
 
-        if owner is None:
-            return []
+            if session_id is None:
+                return []
 
-        query["session_id"] = owner
+            query["session_id"] = session_id
 
     projection = {
         "build_title": 1,
@@ -367,6 +426,8 @@ def list_builds(
         "role": 1,
         "build_score": 1,
         "created_at": 1,
+        "author_name": 1,
+        "author_avatar_url": 1,
     }
     documents = (
         builds_collection()
