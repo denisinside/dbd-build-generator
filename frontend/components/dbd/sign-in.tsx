@@ -1,42 +1,51 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { LogOut } from "lucide-react"
 import { SmartImage } from "@/components/dbd/smart-image"
-import { fetchProviders, signInUrl, type AuthUser, type SignInProvider } from "@/lib/api"
+import { signInUrl, type AuthUser, type SignInProvider } from "@/lib/api"
 import { clearAuthToken } from "@/lib/session"
+
+
+interface ProviderButtonsProps {
+  providers: SignInProvider[]
+  /** Runs before the browser leaves for the provider, to stash any draft. */
+  onBeforeSignIn?: () => void
+}
+
+/**
+ * The provider links themselves.
+ *
+ * Plain anchors, because the OAuth handshake is a full page navigation to the
+ * API and back — a client-side route change cannot start it. `onClick` still
+ * fires first, which is what makes stashing a draft possible.
+ */
+export function ProviderButtons({ providers, onBeforeSignIn }: ProviderButtonsProps) {
+  return (
+    <>
+      {providers.map((provider) => (
+        <a
+          key={provider.id}
+          href={signInUrl(provider.id, "/")}
+          onClick={onBeforeSignIn}
+          className="rounded-lg border border-dbd-purple/40 bg-dbd-purple/10 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-dbd-text transition hover:border-dbd-purple hover:bg-dbd-purple/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dbd-purple"
+        >
+          {provider.name}
+        </a>
+      ))}
+    </>
+  )
+}
 
 
 interface SignInProps {
   user: AuthUser | null
+  providers: SignInProvider[]
   onSignOut: () => void
+  onBeforeSignIn?: () => void
 }
 
-/**
- * Sign-in controls. Renders nothing when the API reports no configured
- * providers, so a deployment without OAuth credentials shows no dead buttons.
- */
-export function SignIn({ user, onSignOut }: SignInProps) {
-  const [providers, setProviders] = useState<SignInProvider[]>([])
-
-  useEffect(() => {
-    let cancelled = false
-
-    fetchProviders()
-      .then((available) => {
-        if (!cancelled) {
-          setProviders(available)
-        }
-      })
-      .catch(() => {
-        // Sign-in is optional; the generator works without it.
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
+/** Sign-in controls for the page header. */
+export function SignIn({ user, providers, onSignOut, onBeforeSignIn }: SignInProps) {
   if (user) {
     return (
       <div className="flex items-center gap-3">
@@ -63,21 +72,20 @@ export function SignIn({ user, onSignOut }: SignInProps) {
   }
 
   if (providers.length === 0) {
-    return null
+    // Said out loud rather than rendering nothing: an empty corner is
+    // indistinguishable from a broken button, and the usual cause is simply
+    // that AUTH_SECRET or a provider's credentials are missing.
+    return (
+      <p className="text-xs text-dbd-muted/70">
+        Sign-in is not configured on this server.
+      </p>
+    )
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs uppercase tracking-wider text-dbd-muted">Sign in with</span>
-      {providers.map((provider) => (
-        <a
-          key={provider.id}
-          href={signInUrl(provider.id, "/")}
-          className="rounded-lg border border-dbd-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-dbd-text transition hover:border-dbd-purple/60 hover:bg-dbd-purple/10"
-        >
-          {provider.name}
-        </a>
-      ))}
+      <ProviderButtons providers={providers} onBeforeSignIn={onBeforeSignIn} />
     </div>
   )
 }

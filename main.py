@@ -128,6 +128,19 @@ def enforce_generate_limit(request: Request, user=Depends(auth.optional_user)):
         del _recent_generates[stale]
 
 
+def require_account(user=Depends(auth.optional_user)):
+    """Generating spends real money, so it happens behind an account.
+
+    Enforced only where signing in is possible at all — see
+    `auth.sign_in_available`. Hiding the button in the UI is not enough: the
+    endpoint is a plain HTTP call that anyone can make directly.
+    """
+    if auth.sign_in_available() and user is None:
+        raise HTTPException(status_code=401, detail="Sign in to generate a build.")
+
+    return user
+
+
 @contextmanager
 def generate_slot():
     """One of the limited generation slots, or a 503 that says so out loud."""
@@ -191,6 +204,14 @@ if auth.AUTH_SECRET:
 else:
     print("AUTH_SECRET is not set: sign-in is disabled, builds stay anonymous.")
 
+if auth.sign_in_available():
+    print("Generating a build requires an account.")
+else:
+    print(
+        "Sign-in is unavailable, so generation stays open to anonymous callers. "
+        "Set AUTH_SECRET and at least one provider's credentials to require an account."
+    )
+
 
 class GenerateBuildRequest(BaseModel):
     prompt: str = Field(min_length=3, max_length=1000)
@@ -220,8 +241,16 @@ def needs_entity_descriptions(document):
     if "character_portrait_path" not in document:
         return True
 
+    # The Killer power slot and a perk's source character are pure enrichment,
+    # so builds saved before those existed can still pick them up.
+    if document.get("role") == "Killer" and "character_power" not in document:
+        return True
+
     for perk in document.get("perks", []):
         if "description" not in perk or "icon_path" not in perk:
+            return True
+
+        if "character" not in perk:
             return True
 
     for kit in document.get("item_kits", []):
@@ -304,7 +333,7 @@ def health():
 def generate_build(
     request: GenerateBuildRequest,
     x_session_id: Optional[str] = Header(default=None),
-    user=Depends(auth.optional_user),
+    user=Depends(require_account),
 ):
     with generate_slot():
         return create_build(request.prompt, clean_session_id(x_session_id), user)
@@ -367,7 +396,7 @@ async def drain_events(events):
 def stream_build(
     request: GenerateBuildRequest,
     x_session_id: Optional[str] = Header(default=None),
-    user=Depends(auth.optional_user),
+    user=Depends(require_account),
 ):
     # Acquired here rather than inside the generator so a busy generator is a
     # plain 503 instead of an error delivered mid-stream.
@@ -455,6 +484,7 @@ def get_build(build_id: str):
                 "$set": {
                     "character_portrait_url": document["character_portrait_url"],
                     "character_portrait_path": document["character_portrait_path"],
+                    "character_power": document["character_power"],
                     "perks": document["perks"],
                     "item_kits": document["item_kits"],
                     "counter_killers": document.get("counter_killers"),

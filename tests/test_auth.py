@@ -429,3 +429,31 @@ def test_an_offsite_landing_path_is_replaced_before_it_is_stored(monkeypatch):
     response = api.get("/auth/twitch/callback")
 
     assert fragment_of(response.headers["location"])["next"] == ["/"]
+
+
+# --- when sign-in is possible at all ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "secret, providers, expected",
+    [
+        ("a-secret", {"twitch": "Twitch"}, True),
+        ("a-secret", {}, False),
+        ("", {"twitch": "Twitch"}, False),
+        ("", {}, False),
+    ],
+)
+def test_sign_in_is_only_available_with_a_secret_and_a_provider(
+    monkeypatch, secret, providers, expected
+):
+    """A secret with no provider credentials still leaves nobody able to log in."""
+    monkeypatch.setattr(auth, "AUTH_SECRET", secret)
+    monkeypatch.setattr(auth, "PROVIDERS", providers)
+
+    assert auth.sign_in_available() is expected
+
+
+def test_the_provider_list_is_empty_when_sign_in_is_off(monkeypatch):
+    monkeypatch.setattr(auth, "AUTH_SECRET", "")
+
+    assert auth.list_providers() == []

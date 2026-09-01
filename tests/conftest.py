@@ -202,6 +202,11 @@ def db():
     return indexed_db(PERKS, KILLERS, SURVIVORS, ITEMS_ADDONS)
 
 
+def choices(*names):
+    """Perk or addon choices from bare names, for tests that only assert names."""
+    return [{"name": name, "reason": f"why {name}"} for name in names]
+
+
 def survivor_build(**overrides):
     """A valid Survivor build payload, ready for DbDBuildSchema."""
     build = {
@@ -209,18 +214,46 @@ def survivor_build(**overrides):
         "character_name": "Meg Thomas",
         "role": "Survivor",
         "difficulty_rating": 2,
-        "build_score": 8,
-        "perks": ["Sprint Burst", "Adrenaline", "Windows of Opportunity", "Déjà Vu"],
+        "perks": [
+            {"name": "Sprint Burst", "reason": "Відрив на початку чейсу."},
+            {"name": "Adrenaline", "reason": "Друге життя на фінальному генераторі."},
+            {"name": "Windows of Opportunity", "reason": "Показує безпечні лупи."},
+            {"name": "Déjà Vu", "reason": "Підсвічує три згенеровані генератори."},
+        ],
         "item_kits": [
             {
                 "kit_title": "Лікування",
                 "item_name": "Emergency Med-Kit",
-                "addons": ["Gauze Roll", "Medical Gauze"],
+                "item_reason": "Швидке самолікування після чейсу.",
+                "addons": [
+                    {"name": "Gauze Roll", "reason": "Пришвидшує лікування."},
+                    {"name": "Medical Gauze", "reason": "Додає зарядів."},
+                ],
             },
             {
                 "kit_title": "Ремонт",
                 "item_name": "Toolbox",
-                "addons": ["Wire Spool", "Clean Rag"],
+                "item_reason": "Тиск на генератори.",
+                "addons": [
+                    {"name": "Wire Spool", "reason": "Більше зарядів."},
+                    {"name": "Clean Rag", "reason": "Швидший ремонт."},
+                ],
+            },
+        ],
+        "axes": [
+            {"axis": "Chase", "score": 4, "reason": "Sprint Burst і вікна."},
+            {"axis": "Information", "score": 2, "reason": "Мало інформації."},
+            {"axis": "Objective", "score": 3, "reason": "Toolbox допомагає."},
+            {"axis": "Team Utility", "score": 2, "reason": "Білд переважно соло."},
+        ],
+        "synergies": [
+            {
+                "entities": ["Sprint Burst", "Windows of Opportunity"],
+                "explanation": "Відрив плюс знання найближчого лупа.",
+            },
+            {
+                "entities": ["Emergency Med-Kit", "Gauze Roll"],
+                "explanation": "Найшвидше самолікування в грі.",
             },
         ],
         "target_audience": [
@@ -239,6 +272,20 @@ def survivor_build(**overrides):
         "cons": [
             {"label": "Разовий", "icon": "timer", "tooltip_text": "Sprint Burst має відкат."},
             {"label": "Без інфо", "icon": "radar", "tooltip_text": "Мало інформації про вбивцю."},
+        ],
+        "counter_perks": [
+            {
+                "perk_name": "Hex: Ruin",
+                "explanation": "Регресія карає повільний ремонт.",
+            },
+            {
+                "perk_name": "Lethal Pursuer",
+                "explanation": "Ранній аура-рід ламає стелс на старті.",
+            },
+            {
+                "perk_name": "Corrupt Intervention",
+                "explanation": "Змушує починати з невигідних генераторів.",
+            },
         ],
         "counter_killers": [
             {
@@ -266,23 +313,46 @@ def killer_build(**overrides):
         "character_name": "The Huntress",
         "role": "Killer",
         "difficulty_rating": 3,
-        "build_score": 7,
         "perks": [
-            "Hex: Ruin",
-            "Lethal Pursuer",
-            "Corrupt Intervention",
-            "Barbecue & Chilli",
+            {"name": "Hex: Ruin", "reason": "Регресія без патрулювання."},
+            {"name": "Lethal Pursuer", "reason": "Перший чейс одразу зі старту."},
+            {"name": "Corrupt Intervention", "reason": "Блокує далекі генератори."},
+            {"name": "Barbecue & Chilli", "reason": "Інформація після гака."},
         ],
         "item_kits": [
             {
                 "kit_title": "Дальній бій",
                 "item_name": None,
-                "addons": ["Iridescent Head", "Infantry Belt"],
+                "item_reason": None,
+                "addons": [
+                    {"name": "Iridescent Head", "reason": "Ваншот сокирою."},
+                    {"name": "Infantry Belt", "reason": "Більше сокир у запасі."},
+                ],
             },
             {
                 "kit_title": "Швидке перезаряджання",
                 "item_name": None,
-                "addons": ["Soldier's Puttee", "Infantry Belt"],
+                "item_reason": None,
+                "addons": [
+                    {"name": "Soldier's Puttee", "reason": "Швидше перезаряджання."},
+                    {"name": "Infantry Belt", "reason": "Більше сокир у запасі."},
+                ],
+            },
+        ],
+        "axes": [
+            {"axis": "Chase", "score": 5, "reason": "Сокири закривають луп."},
+            {"axis": "Map Pressure", "score": 3, "reason": "Повільне пересування."},
+            {"axis": "Slowdown", "score": 4, "reason": "Ruin і Corrupt."},
+            {"axis": "Anti-Loop", "score": 4, "reason": "Кидок через укриття."},
+        ],
+        "synergies": [
+            {
+                "entities": ["Hunting Hatchets", "Iridescent Head"],
+                "explanation": "Сила вбивці перетворюється на ваншот.",
+            },
+            {
+                "entities": ["Lethal Pursuer", "Barbecue & Chilli"],
+                "explanation": "Інформація на старті і після кожного гака.",
             },
         ],
         "target_audience": [
@@ -301,6 +371,20 @@ def killer_build(**overrides):
         "cons": [
             {"label": "Складність", "icon": "gauge", "tooltip_text": "Потрібна точність."},
             {"label": "Аддони", "icon": "cog", "tooltip_text": "Залежить від рідких аддонів."},
+        ],
+        "counter_perks": [
+            {
+                "perk_name": "Sprint Burst",
+                "explanation": "Миттєвий відрив псує перший чейс.",
+            },
+            {
+                "perk_name": "Windows of Opportunity",
+                "explanation": "Виживший завжди знає найближчий безпечний луп.",
+            },
+            {
+                "perk_name": "Adrenaline",
+                "explanation": "Повертає здоров'я саме тоді, коли ви тиснете.",
+            },
         ],
         "counter_killers": None,
     }

@@ -1,11 +1,16 @@
 import Link from "next/link"
 import type { Build } from "@/types/build"
 import { PageTitle } from "./page-title"
+import { AnotherVariant } from "./another-variant"
+import { BuildPrompt } from "./build-prompt"
 import { BuildHeader } from "./build-header"
+import { BuildAxes } from "./build-evaluation"
+import { BuildSynergies } from "./build-synergies"
 import { TargetAudience } from "./target-audience"
 import { GameplayStrategy } from "./gameplay-strategy"
 import { ProsCons } from "./pros-cons"
 import { CounterMatchups } from "./counter-matchups"
+import { CounterPerks } from "./counter-perks"
 import { Footer } from "./footer"
 
 interface BuildPageProps {
@@ -28,21 +33,33 @@ export function BuildPage({ build, backHref = "/" }: BuildPageProps) {
       />
 
       <div className="mx-auto w-full max-w-4xl px-4 pb-14 md:px-5">
-        <Link
-          href={backHref}
-          className="mt-6 inline-block text-sm font-medium text-dbd-muted transition hover:text-dbd-text"
-        >
-          ← Generator / History
-        </Link>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href={backHref}
+            className="text-sm font-medium text-dbd-muted transition hover:text-dbd-text"
+          >
+            ← Generator / History
+          </Link>
+
+          {build.prompt ? (
+            <div className="flex items-center gap-2">
+              <BuildPrompt prompt={build.prompt} />
+              <AnotherVariant prompt={build.prompt} />
+            </div>
+          ) : null}
+        </div>
 
         <PageTitle title={build.title} />
 
         <div className="flex flex-col gap-9">
           <BuildHeader build={build} />
+          <BuildAxes evaluation={build.evaluation} />
+          <BuildSynergies synergies={build.synergies} />
           <TargetAudience items={build.targetAudience} />
           <GameplayStrategy strategy={build.strategy} />
           <ProsCons pros={build.pros} cons={build.cons} />
           <CounterMatchups counters={build.counters} />
+          <CounterPerks counterPerks={build.counterPerks} role={build.role} />
         </div>
       </div>
 

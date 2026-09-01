@@ -173,10 +173,21 @@ def download_media(url, category, name, force=False, width=None):
     return None
 
 
+# An editorial banner the wiki prepends while a PTB patch is unreleased. It is
+# a note to wiki readers, not part of the entity, and it was ending up in perk
+# tooltips and in the embedded text. Stripped here rather than in each parser
+# because it shows up on perk rows and Killer pages alike.
+PATCH_BANNER = re.compile(
+    r"^This description is based on the changes announced for or featured in "
+    r"the upcoming Patch [\d.]+\s*",
+)
+
+
 def clean_text(element):
     text = element.get_text(" ", strip=True)
     text = " ".join(text.split())
     text = re.sub(r"\s+([.,:;!?])", r"\1", text)
+    text = PATCH_BANNER.sub("", text)
 
     return text
 

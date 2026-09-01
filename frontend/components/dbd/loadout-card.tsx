@@ -15,7 +15,11 @@ export function LoadoutCard({ loadout }: LoadoutCardProps) {
     <div className="flex flex-col items-center gap-2 text-center">
       <div className="flex items-end justify-center gap-1.5 rounded-md border border-dbd-border bg-dbd-panel-2 px-3.5 py-2.5">
         {loadout.item ? (
-          <EntityTooltip name={loadout.item.name} description={loadout.item.description}>
+          <EntityTooltip
+            name={loadout.item.name}
+            description={loadout.item.description}
+            reason={loadout.item.reason}
+          >
             <RarityIcon
               src={loadout.item.image}
               fallbackSrc={loadout.item.imageFallback}
@@ -32,6 +36,7 @@ export function LoadoutCard({ loadout }: LoadoutCardProps) {
               key={`${addon.name}-${i}`}
               name={addon.name}
               description={addon.description}
+              reason={addon.reason}
             >
               <RarityIcon
                 src={addon.image}

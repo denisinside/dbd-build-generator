@@ -20,7 +20,7 @@
       "name": "Adrenaline",
       "role": "Survivor",
       "character": "Meg",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"You are fuelled by unexpecting energy when on the verge of escape.\" Once the Exit Gates are powered, Adrenaline activates and triggers the following effects: Heals you to the next Health State. Grants a +50 % Haste Status Effect for 4 seconds. Adrenaline can be used while Exhausted and ignores an existing Status Effect. Adrenaline causes the Exhausted Status Effect for 60 / 50 / 40 seconds after use.",
+      "description": "\"You are fuelled by unexpecting energy when on the verge of escape.\" Once the Exit Gates are powered, Adrenaline activates and triggers the following effects: Heals you to the next Health State. Grants a +50 % Haste Status Effect for 4 seconds. Adrenaline can be used while Exhausted and ignores an existing Status Effect. Adrenaline causes the Exhausted Status Effect for 60 / 50 / 40 seconds after use.",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_adrenaline.png/96px-IconPerks_adrenaline.png?9f8d2a",
       "icon_path": "/media/perks/adrenaline.png"
     },
@@ -52,7 +52,7 @@
       "name": "Apocalyptic Ingenuity",
       "role": "Survivor",
       "character": "Rick",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"You salvage what little there is to defend your team.\" Unlocks potential in your Aura-reading ability: The Auras of broken Pallets are revealed to you within 24 / 28 / 32 metres. After unlocking or rummaging through 1 Chest, Apocalyptic Ingenuity gains a special ability. While standing next to the location of a broken Pallet, press and hold the Active Ability button for 3 seconds to use it: Rebuilds it as a Fragile Pallet. Fragile Pallets instantly break when dropped. \"Without the fences, this place is worthless.\" — Rick Grimes",
+      "description": "\"You salvage what little there is to defend your team.\" Unlocks potential in your Aura-reading ability: The Auras of broken Pallets are revealed to you within 24 / 28 / 32 metres. After unlocking or rummaging through 1 Chest, Apocalyptic Ingenuity gains a special ability. While standing next to the location of a broken Pallet, press and hold the Active Ability button for 3 seconds to use it: Rebuilds it as a Fragile Pallet. Fragile Pallets instantly break when dropped. \"Without the fences, this place is worthless.\" — Rick Grimes",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_apocalypticIngenuity.png/96px-IconPerks_apocalypticIngenuity.png?271ffd",
       "icon_path": "/media/perks/apocalyptic-ingenuity.png"
     },
@@ -220,7 +220,7 @@
       "name": "Boon: Steadfast",
       "role": "Survivor",
       "character": "Aurora",
-      "description": "Press and hold the Active Ability button on a Dull or Hex Totem to bless it and create a Boon Totem. All Survivors within 24 metres hear soft chimes ringing out and benefit from its Boon Effects: Generators within this Boon's range: Regress -50 % slower. Survivors repair them + 8 / 9 / 10 % faster. Survivors can only be affected by one instance of Boon: Steadfast at a time. Only one Totem can be blessed by your Boon Perks at a time and all of their effects are active on the same Boon Totem.",
+      "description": "Press and hold the Active Ability button on a Dull or Hex Totem to bless it and create a Boon Totem. All Survivors within 24 metres hear soft chimes ringing out and benefit from its Boon Effects: Generators within this Boon's range: Regress -50 % slower. Survivors repair them + 8 / 9 / 10 % faster. Survivors see their auras while inside the Boon's range. Survivors can only be affected by one instance of Boon: Steadfast at a time. Only one Totem can be blessed by your Boon Perks at a time and all of their effects are active on the same Boon Totem. \"That which thine hands deliver shall prosper, for thine hands are guided by faith.\" — (Enlightenments, 2:10)",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/T_UI_iconsPerks_BoonSteadfast.png/96px-T_UI_iconsPerks_BoonSteadfast.png?69ff59",
       "icon_path": "/media/perks/boon-steadfast.png"
     },
@@ -228,7 +228,7 @@
       "name": "Borrowed Time",
       "role": "Survivor",
       "character": "Bill",
-      "description": "\"You are fuelled with an unexpected energy when saving an ally from a hook.\" Whenever you unhook another Survivor, they benefit from the following effects: Extends the duration of the Endurance Status Effect by 6 / 8 / 10 seconds to 21 / 23 / 25 seconds. Endurance is cancelled prematurely when performing a Conspicuous Action of any kind. Extends the duration of the Haste Status Effect by +10 seconds to 25 seconds. \"Probably stings like hell, but it ain't gonna kill ya. Up and at 'em soldier. Time to move!\" — Bill Overbeck",
+      "description": "\"You are fuelled with an unexpected energy when saving an ally from a hook.\" Whenever you unhook another Survivor, they benefit from the following effects: Extends the duration of the Endurance Status Effect by 6 / 8 / 10 seconds to 16 / 18 / 20 seconds. Endurance is cancelled prematurely when performing a Conspicuous Action of any kind. Extends the duration of the Haste Status Effect by +10 seconds to 20 seconds. \"Probably stings like hell, but it ain't gonna kill ya. Up and at 'em soldier. Time to move!\" — Bill Overbeck",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_borrowedTime.png/96px-IconPerks_borrowedTime.png?5a951f",
       "icon_path": "/media/perks/borrowed-time.png"
     },
@@ -332,7 +332,7 @@
       "name": "Clean Break",
       "role": "Survivor",
       "character": "Taurie",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"At the end of the day, everyone has to look out for themselves.\" After completing a Healing action on another Survivor, Clean Break activates. Press the Active Ability button while being healed by another Survivor to trigger the following effects: Suffer from the Broken Status Effect. You are automatically healed 1 Health State after 75 / 60 / 45 seconds. This effect is cancelled prematurely if you enter the Dying State. Clean Break does not activate if you already suffer from Broken. Clean Break deactivates after healing you. \"I'll be fine! Don't stick your neck out for me.\" — Taurie Cain",
+      "description": "\"At the end of the day, everyone has to look out for themselves.\" After completing a Healing action on another Survivor, Clean Break activates. Press the Active Ability button while being healed by another Survivor to trigger the following effects: Suffer from the Broken Status Effect. You are automatically healed 1 Health State after 75 / 60 / 45 seconds. This effect is cancelled prematurely if you enter the Dying State. Clean Break does not activate if you already suffer from Broken. Clean Break deactivates after healing you. \"I'll be fine! Don't stick your neck out for me.\" — Taurie Cain",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_cleanBreak.png/96px-IconPerks_cleanBreak.png?5b7e94",
       "icon_path": "/media/perks/clean-break.png"
     },
@@ -572,7 +572,7 @@
       "name": "Five Moves Ahead",
       "role": "Survivor",
       "character": "Kwon",
-      "description": "This perk activates while you are being chased by the Killer or are inside the Killer's Terror Radius: After you drop a Pallet, you start moving 50 % earlier. See the auras of the 5 closest Pallets and Windows. This perk goes on a 40 / 35 / 30 seconds cool-down when you drop a Pallet. \"Every problem has a solution. It’s only a question of complexity.\" — Kwon Tae-young",
+      "description": "This perk activates while you are being chased by the Killer or are inside the Killer's Terror Radius: After you drop a Pallet, you start moving 50 % earlier. See the auras of the 5 closest Pallets and Windows. This perk goes on a 40 / 35 / 30 seconds cool-down when you drop a Pallet while this perk is activated. \"Every problem has a solution. It’s only a question of complexity.\" — Kwon Tae-young",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconsPerks_FiveMovesAhead.png/96px-IconsPerks_FiveMovesAhead.png?57a099",
       "icon_path": "/media/perks/five-moves-ahead.png"
     },
@@ -636,7 +636,7 @@
       "name": "Fruits of Your Labor",
       "role": "Survivor",
       "character": "Aurora",
-      "description": "Whenever a Generator is completed, gain a token. Whenever you finish repairing a Generator, for each token this perk has: Gain +5 % Haste Status Effect for 2 seconds. Gain 10 / 15 / 20 % healing progress.",
+      "description": "Whenever a Generator is completed, gain a token. Whenever you finish repairing a Generator, for each token this perk has: Gain +5 % Haste Status Effect for 2 seconds. Gain 10 / 15 / 20 % healing progress. \"And as the final brick was laid upon the walls of Stellanatis, the people rejoiced.\" — (Kelglen’s Declaration, 9:9)",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/T_UI_iconsPerks_FruitsOfYourLabor.png/96px-T_UI_iconsPerks_FruitsOfYourLabor.png?6e8560",
       "icon_path": "/media/perks/fruits-of-your-labor.png"
     },
@@ -836,7 +836,7 @@
       "name": "Moment of Glory",
       "role": "Survivor",
       "character": "Trevor",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"A hero should always have the chance to make a comeback.\" After performing the Unlocking or Rummaging action on Chests a total of 1 time, Moment of Glory activates: When you become injured, you instantly suffer from the Broken Status Effect. You are automatically healed 1 Health State after 80 / 70 / 60 seconds. This effect is cancelled prematurely if you enter the Dying State. Moment of Glory does not activate if you already suffer from the Broken Status Effect. Moment of Glory deactivates after healing you. \"Never lose hope for a brighter tomorrow.\" — Trevor",
+      "description": "\"A hero should always have the chance to make a comeback.\" After performing the Unlocking or Rummaging action on Chests a total of 1 time, Moment of Glory activates: When you become injured, you instantly suffer from the Broken Status Effect. You are automatically healed 1 Health State after 80 / 70 / 60 seconds. This effect is cancelled prematurely if you enter the Dying State. Moment of Glory does not activate if you already suffer from the Broken Status Effect. Moment of Glory deactivates after healing you. \"Never lose hope for a brighter tomorrow.\" — Trevor",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_MomentOfGlory.png/96px-IconPerks_MomentOfGlory.png?6294f9",
       "icon_path": "/media/perks/moment-of-glory.png"
     },
@@ -1028,7 +1028,7 @@
       "name": "Repressed Alliance",
       "role": "Survivor",
       "character": "Cheryl",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 You are accustomed to being hunted by malicious forces, and you have begun using it to your advantage. After repairing Generators for a total of 55 / 50 / 45 seconds, Repressed Alliance activates: Press the Active Ability button to call upon The Entity to block the Generator you are currently repairing for 15 seconds, after which Repressed Alliance deactivates. The Aura of the blocked Generator is revealed to all Survivors in white. Repressed Alliance can only be triggered when no other Survivors are repairing your Generator.",
+      "description": "You are accustomed to being hunted by malicious forces, and you have begun using it to your advantage. After repairing Generators for a total of 55 / 50 / 45 seconds, Repressed Alliance activates: Press the Active Ability button to call upon The Entity to block the Generator you are currently repairing for 15 seconds, after which Repressed Alliance deactivates. The Aura of the blocked Generator is revealed to all Survivors in white. Repressed Alliance can only be triggered when no other Survivors are repairing your Generator.",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_repressedAlliance.png/96px-IconPerks_repressedAlliance.png?2a696f",
       "icon_path": "/media/perks/repressed-alliance.png"
     },
@@ -1084,7 +1084,7 @@
       "name": "Salvation's Cry",
       "role": "Survivor",
       "character": "Aurora",
-      "description": "When the Killer starts chasing you: You see the auras of other Survivors for 1 / 2 / 3 seconds. Survivors not being chased see your aura for 5 seconds Survivors not being chased see the Killer's aura for 5 seconds",
+      "description": "When the Killer starts chasing you: You see the auras of other Survivors for 1 / 2 / 3 seconds. Survivors not being chased see your aura for 5 seconds Survivors not being chased see the Killer's aura for 5 seconds \"May you see as the stars see.\" — (Auroran Blessing)",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/T_UI_iconsPerks_SalvationsCry.png/96px-T_UI_iconsPerks_SalvationsCry.png?697de7",
       "icon_path": "/media/perks/salvation-s-cry.png"
     },
@@ -1204,7 +1204,7 @@
       "name": "Sprint Burst",
       "role": "Survivor",
       "character": "Meg",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 Starting to run triggers Sprint Burst: Grants a +50 % Haste Status Effect for 2 seconds. Sprint Burst cannot be used while Exhausted. Sprint Burst causes the Exhausted Status Effect for 60 / 50 / 40 seconds. \"See you if you can catch up...\" — Meg Thomas",
+      "description": "Starting to run triggers Sprint Burst: Grants a +50 % Haste Status Effect for 2 seconds. Sprint Burst cannot be used while Exhausted. Sprint Burst causes the Exhausted Status Effect for 60 / 50 / 40 seconds. \"See you if you can catch up...\" — Meg Thomas",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_sprintBurst.png/96px-IconPerks_sprintBurst.png?7d17fc",
       "icon_path": "/media/perks/sprint-burst.png"
     },
@@ -1292,7 +1292,7 @@
       "name": "Technician",
       "role": "Survivor",
       "character": "Feng",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"You are apt at handling machinery with the greatest care and precision.\" While repairing a Generator, the following effects apply: Reduces the audible range of all noises related to the Repair interaction by -16 metres. Increases the Progression penalty incurred when failing a Skill Check by 4 / 3 / 2 %. Suppresses the explosion of the Generator and the Loud Noise Notification usually triggered by that. \"I am gonna stealth this one.\" — Feng Min",
+      "description": "\"You are apt at handling machinery with the greatest care and precision.\" While repairing a Generator, the following effects apply: Reduces the audible range of all noises related to the Repair interaction by -16 metres. Increases the Progression penalty incurred when failing a Skill Check by 4 / 3 / 2 %. Suppresses the explosion of the Generator and the Loud Noise Notification usually triggered by that. \"I am gonna stealth this one.\" — Feng Min",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_technician.png/96px-IconPerks_technician.png?c3c5de",
       "icon_path": "/media/perks/technician.png"
     },
@@ -1348,7 +1348,7 @@
       "name": "Vigil",
       "role": "Survivor",
       "character": "Quentin",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"You watch over your friends, even in dire situations.\" You recover 30 / 35 / 40 % faster from the following: The Blindness, Broken, Exhausted, Exposed, Haemorrhage, Hindered, Mangled, and Oblivious Status Effects. Vigil extends its effect to all Survivors within 16 metres of your location and lingers for 15 seconds after leaving its Area of Effect. Survivors can only be affected by one instance of Vigil at a time. \"I am gonna be here when you wake up. You are gonna make it.\" — Quentin Smith",
+      "description": "\"You watch over your friends, even in dire situations.\" You recover 30 / 35 / 40 % faster from the following: The Blindness, Broken, Exhausted, Exposed, Haemorrhage, Hindered, Mangled, and Oblivious Status Effects. Vigil extends its effect to all Survivors within 16 metres of your location and lingers for 15 seconds after leaving its Area of Effect. Survivors can only be affected by one instance of Vigil at a time. \"I am gonna be here when you wake up. You are gonna make it.\" — Quentin Smith",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_vigil.png/96px-IconPerks_vigil.png?3fe709",
       "icon_path": "/media/perks/vigil.png"
     },
@@ -1436,7 +1436,7 @@
       "name": "A Nurse's Calling",
       "role": "Killer",
       "character": "Nurse",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 Unlocks potential in your Aura-reading ability: The Auras of Survivors being healed or healing themselves are revealed to you within 28 / 30 / 32 metres. \"Still attached to the fragments of her past life, she is drawn to those in need of help.\"",
+      "description": "Unlocks potential in your Aura-reading ability: The Auras of Survivors being healed or healing themselves are revealed to you within 28 / 30 / 32 metres. \"Still attached to the fragments of her past life, she is drawn to those in need of help.\"",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_aNursesCalling.png/96px-IconPerks_aNursesCalling.png?e79e94",
       "icon_path": "/media/perks/a-nurse-s-calling.png"
     },
@@ -1548,7 +1548,7 @@
       "name": "Call of Brine",
       "role": "Killer",
       "character": "Onryō",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"Your psychic abilities influence technology in devastating ways.\" After performing the Damage Generator action on a Generator, Call of Brine applies its effects to it for 90 seconds: Increases its Regression speed to 130 / 140 / 150 % of the default value. Highlights its Aura to you in yellow. Triggers a Loud Noise Notification whenever a Survivor succeeds a Good Skill Check while repairing it.",
+      "description": "\"Your psychic abilities influence technology in devastating ways.\" After performing the Damage Generator action on a Generator, Call of Brine applies its effects to it for 90 seconds: Increases its Regression speed to 130 / 140 / 150 % of the default value. Highlights its Aura to you in yellow. Triggers a Loud Noise Notification whenever a Survivor succeeds a Good Skill Check while repairing it.",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_callOfBrine.png/96px-IconPerks_callOfBrine.png?95161a",
       "icon_path": "/media/perks/call-of-brine.png"
     },
@@ -1556,7 +1556,7 @@
       "name": "Celestial Witness",
       "role": "Killer",
       "character": "Judgment",
-      "description": "Every 30 seconds, if the Obsession is 40 metres away from you, you see their aura for 2 / 2.5 / 3 seconds. Otherwise, the farthest Survivor becomes the Obsession.",
+      "description": "Every 30 seconds, if the Obsession is 40 metres away from you, you see their aura for 2 / 2.5 / 3 seconds. Otherwise, the farthest Survivor becomes the Obsession. \"And so the heretics huddled, cowardly, in the night; but upon Judgment’s arrival, It saw them all, and punished them.\" — (Witness to Koenrad, ch. 32)",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/T_UI_iconsPerks_CelestialWitness.png/96px-T_UI_iconsPerks_CelestialWitness.png?d93f72",
       "icon_path": "/media/perks/celestial-witness.png"
     },
@@ -1572,7 +1572,7 @@
       "name": "Coulrophobia",
       "role": "Killer",
       "character": "Clown",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"Even those without a fear of clowns know to be terrified of you.\" Survivors inside your Terror Radius suffer from the following effects: Reduces all Healing speeds by 20 / 25 / 30 %. Increases the Pointer-Rotation speed of Healing Skill Checks by +50 %.",
+      "description": "\"Even those without a fear of clowns know to be terrified of you.\" Survivors inside your Terror Radius suffer from the following effects: Reduces all Healing speeds by 20 / 25 / 30 %. Increases the Pointer-Rotation speed of Healing Skill Checks by +50 %.",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_coulrophobia.png/96px-IconPerks_coulrophobia.png?f4801f",
       "icon_path": "/media/perks/coulrophobia.png"
     },
@@ -1732,7 +1732,7 @@
       "name": "Forced Hesitation",
       "role": "Killer",
       "character": "Singularity",
-      "description": "\"You have learnt the emotional weaknesses of the organics, and how to exploit them.\" Whenever a Survivor is put into the Dying State by any means, Forced Hesitation triggers its effect: Causes all other Survivors within 16 metres of them suffer from a -20 % Hindered Status Effect for 10 seconds. Forced Hesitation has a cool-down of 40 / 35 / 30 seconds. \"THE ORGANIC MIND'S CAPACITY FOR EMPATHY GOES BEYOND HINDRANCE!\" — HUX-A7-13",
+      "description": "\"You have learnt the emotional weaknesses of the organics, and how to exploit them.\" Whenever a Survivor is put into the Dying State by any means, Forced Hesitation triggers its effect: Causes all other Survivors within 16 metres of them suffer from a -20 % Hindered Status Effect for 10 seconds. Forced Hesitation has a cool-down of 40 / 35 / 30 seconds. \"THE ORGANIC MIND'S CAPACITY FOR EMPATHY GOES BEYOND HINDRANCE.\" — HUX-A7-13",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_forcedHesitation.png/96px-IconPerks_forcedHesitation.png?46c982",
       "icon_path": "/media/perks/forced-hesitation.png"
     },
@@ -1796,7 +1796,7 @@
       "name": "Genetic Limits",
       "role": "Killer",
       "character": "Singularity",
-      "description": "\"Around you, the limits of human life become readily apparent.\" Whenever a Survivor loses a Health State by any means, Genetic Limits triggers its effect: Causes them to suffer from the Exhausted Status Effect for 6 / 7 / 8 seconds. \"THE ORGANIC BODY IS SO LIMITED!\" — HUX-A7-13",
+      "description": "\"Around you, the limits of human life become readily apparent.\" Whenever a Survivor loses a Health State by any means, Genetic Limits triggers its effect: Causes them to suffer from the Exhausted Status Effect for 6 / 7 / 8 seconds. \"THE ORGANIC BODY IS SO LIMITED.\" — HUX-A7-13",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_geneticLimits.png/96px-IconPerks_geneticLimits.png?41bad7",
       "icon_path": "/media/perks/genetic-limits.png"
     },
@@ -1964,7 +1964,7 @@
       "name": "Hex: Thrill of the Hunt",
       "role": "Killer",
       "character": "General",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"A Hex rooting its power on hope. The false hope of Survivors fills you with excitement and strengthens your Totems.\" Start the Trial with 5 Tokens, one for each Totem located in the environment: Reduces the Action speeds for Blessing and Cleansing by a stack-able 8 / 9 / 10 % per Token, up to a maximum of 40 / 45 / 50 %. Hex: Thrill of the Hunt loses -1 Token whenever a Totem is cleansed. The Hex Effects persist until the Hex Totem is either blessed or cleansed by a Survivor, disabling it for the remainder of the Trial.",
+      "description": "\"A Hex rooting its power on hope. The false hope of Survivors fills you with excitement and strengthens your Totems.\" Start the Trial with 5 Tokens, one for each Totem located in the environment: Reduces the Action speeds for Blessing and Cleansing by a stack-able 8 / 9 / 10 % per Token, up to a maximum of 40 / 45 / 50 %. Hex: Thrill of the Hunt loses -1 Token whenever a Totem is cleansed. The Hex Effects persist until the Hex Totem is either blessed or cleansed by a Survivor, disabling it for the remainder of the Trial.",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_hexThrillOfTheHunt.png/96px-IconPerks_hexThrillOfTheHunt.png?9eae8e",
       "icon_path": "/media/perks/hex-thrill-of-the-hunt.png"
     },
@@ -1980,7 +1980,7 @@
       "name": "Hex: Under Your Thumb",
       "role": "Killer",
       "character": "Judgment",
-      "description": "When a Survivor gains a Hook State, Hex: Under Your Thumb activates on a random Dull Totem: Running Survivors cannot gain more than 25 / 20 / 15 % Haste at once. Whenever a running Survivor within 32 metres gains Haste, the Survivor's location is revealed to you for 4 seconds. The Hex Effects persist until the Hex Totem is either blessed or cleansed by a Survivor, disabling it for the remainder of the Trial.",
+      "description": "When a Survivor gains a Hook State, Hex: Under Your Thumb activates on a random Dull Totem: Running Survivors cannot gain more than 25 / 20 / 15 % Haste at once. Whenever a running Survivor within 32 metres gains Haste, the Survivor's location is revealed to you for 4 seconds. The Hex Effects persist until the Hex Totem is either blessed or cleansed by a Survivor, disabling it for the remainder of the Trial. \"They will run, but Judgment will make the very ground they tread turn to ash and smoke.\" — (Visions of Gerhardt, ch. 1)",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/T_UI_iconsPerks_HexUnderYourThumb.png/96px-T_UI_iconsPerks_HexUnderYourThumb.png?57c1f4",
       "icon_path": "/media/perks/hex-under-your-thumb.png"
     },
@@ -2076,7 +2076,7 @@
       "name": "Keep Them Waiting",
       "role": "Killer",
       "character": "General",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 Damaging any Survivor other than the Obsession with a Basic Attack causes Keep Them Waiting to gain +1 Token, up to a maximum of 6 / 7 / 8 Tokens. Damaging the Obsession with either a Basic or Special Attack causes Keep Them Waiting to lose -2 Tokens: Grants a stack-able -5 % per Token Cool-down time reduction on successful Basic Attacks, up to a maximum of 30 / 35 / 40 %. Keep Them Waiting freezes its current Token Count once the Obsession is sacrificed or killed. You can only be obsessed with one Survivor at a time.",
+      "description": "Damaging any Survivor other than the Obsession with a Basic Attack causes Keep Them Waiting to gain +1 Token, up to a maximum of 6 / 7 / 8 Tokens. Damaging the Obsession with either a Basic or Special Attack causes Keep Them Waiting to lose -2 Tokens: Grants a stack-able -5 % per Token Cool-down time reduction on successful Basic Attacks, up to a maximum of 30 / 35 / 40 %. Keep Them Waiting freezes its current Token Count once the Obsession is sacrificed or killed. You can only be obsessed with one Survivor at a time.",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_saveTheBestForLast_noLicense.png/96px-IconPerks_saveTheBestForLast_noLicense.png?e62cf0",
       "icon_path": "/media/perks/keep-them-waiting.png"
     },
@@ -2100,7 +2100,7 @@
       "name": "Lay Waste",
       "role": "Killer",
       "character": "Judgment",
-      "description": "Damaging a Generator makes it regress +2 % faster for each Charge it has. This perk has a cool-down of 55 / 50 / 45 seconds after damaging a Generator.",
+      "description": "Damaging a Generator makes it regress +2 % faster for each Charge it has. This perk has a cool-down of 55 / 50 / 45 seconds after damaging a Generator. \"They built hypercomputers and skyscrapers and quantum networks, but all of those things trembled and fell under the power of Judgment’s light.\" — (Witness to Koenrad, ch. 8)",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/T_UI_iconsPerks_LayWaste.png/96px-T_UI_iconsPerks_LayWaste.png?a49aeb",
       "icon_path": "/media/perks/lay-waste.png"
     },
@@ -2132,7 +2132,7 @@
       "name": "Machine Learning",
       "role": "Killer",
       "character": "Singularity",
-      "description": "\"Free from your shackles, you are born anew and prepared to eliminate your creators.\" After performing the Damage Generator action, Machine Learning activates: Causes that Generator to become a Compromised Generator. Damaging another Generator transfers the state to it instead. The Aura of the Compromised Generator is highlighted to you in yellow until it is completed. Once the Compromised Generator is completed, you benefit from the following effects for 40 / 50 / 60 seconds: Undetectable Status Effect +8 % Haste Status Effect Machine Learning deactivates after use. \"YOU WILL HOLD NO DOMINION OVER ME!\" — HUX-A7-13",
+      "description": "\"Free from your shackles, you are born anew and prepared to eliminate your creators.\" After performing the Damage Generator action, Machine Learning activates: Causes that Generator to become a Compromised Generator. Damaging another Generator transfers the state to it instead. The Aura of the Compromised Generator is highlighted to you in yellow until it is completed. Once the Compromised Generator is completed, you benefit from the following effects for 40 / 50 / 60 seconds: Undetectable Status Effect +8 % Haste Status Effect Machine Learning deactivates after use. \"YOU WILL HOLD NO DOMINION OVER ME.\" — HUX-A7-13",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_machineLearning.png/96px-IconPerks_machineLearning.png?d42380",
       "icon_path": "/media/perks/machine-learning.png"
     },
@@ -2220,7 +2220,7 @@
       "name": "Nowhere to Hide",
       "role": "Killer",
       "character": "Knight",
-      "description": "This description is based on the changes announced for or featured in the upcoming Patch 10.1.0 \"The machinations of the weak and craven draw your ire. Your anger forces Survivors to reveal themselves.\" Performing the Damage Generator action on a Generator triggers Nowhere to Hide: The Auras of all Survivors within 18 metres of your location are revealed to you for 3 / 4 / 5 seconds. \"Out with you, cowards! Show yourselves!\" — Tarhos Kovács",
+      "description": "\"The machinations of the weak and craven draw your ire. Your anger forces Survivors to reveal themselves.\" Performing the Damage Generator action on a Generator triggers Nowhere to Hide: The Auras of all Survivors within 24 metres of the Generator 's location are revealed to you for 3 / 4 / 5 seconds. \"Out with you, cowards! Show yourselves!\" — Tarhos Kovács",
       "icon_url": "https://deadbydaylight.wiki.gg/images/thumb/IconPerks_nowhereToHide.png/96px-IconPerks_nowhereToHide.png?977c80",
       "icon_path": "/media/perks/nowhere-to-hide.png"
     },

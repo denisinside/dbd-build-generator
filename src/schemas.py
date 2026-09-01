@@ -78,6 +78,38 @@ class BuildRequestAnalysis(BaseModel):
         return self
 
 
+# Named in English so the model cannot invent an axis, and fixed per role so
+# two builds for the same role stay comparable.
+SURVIVOR_AXES = ("Chase", "Information", "Objective", "Team Utility")
+KILLER_AXES = ("Chase", "Map Pressure", "Slowdown", "Anti-Loop")
+
+BuildAxisName = Literal[
+    "Chase",
+    "Information",
+    "Objective",
+    "Team Utility",
+    "Map Pressure",
+    "Slowdown",
+    "Anti-Loop",
+]
+
+
+class PerkChoice(BaseModel):
+    name: str = Field(description="Official perk name, in English")
+    reason: str = Field(
+        description="One sentence on why this perk is in this build, "
+        "in the user's language"
+    )
+
+
+class AddonChoice(BaseModel):
+    name: str = Field(description="Official addon name, in English")
+    reason: str = Field(
+        description="One short sentence on what this addon does for the kit, "
+        "in the user's language"
+    )
+
+
 class ItemKit(BaseModel):
     kit_title: str = Field(
         description="Short kit purpose written in the user's language"
@@ -85,8 +117,34 @@ class ItemKit(BaseModel):
     item_name: Optional[str] = Field(
         default=None, description="Item name (None if Killer role)"
     )
-    addons: list[str] = Field(
-        min_length=2, max_length=2, description="Exactly 2 addon names"
+    item_reason: Optional[str] = Field(
+        default=None,
+        description="Why this item suits the build; null for Killer role",
+    )
+    addons: list[AddonChoice] = Field(
+        min_length=2, max_length=2, description="Exactly 2 addons"
+    )
+
+
+class Synergy(BaseModel):
+    entities: list[str] = Field(
+        min_length=2,
+        max_length=4,
+        description=(
+            "Names of perks, addons, items or the Killer power FROM THIS BUILD "
+            "that combine. English names only, spelled exactly as chosen."
+        ),
+    )
+    explanation: str = Field(
+        description="What the combination achieves, in the user's language"
+    )
+
+
+class BuildAxis(BaseModel):
+    axis: BuildAxisName
+    score: int = Field(ge=1, le=5, description="How strong the build is on this axis")
+    reason: str = Field(
+        description="One short sentence justifying the score, in the user's language"
     )
 
 
@@ -117,9 +175,31 @@ class ProConBlock(BaseModel):
 
 class CounterKillerBlock(BaseModel):
     killer_name: str = Field(description="Killer name from DbD")
-    difficulty_level: Literal["Medium Difficulty", "High Difficulty"]
+    # Three levels, not two: with only Medium and High every matchup in the
+    # list reads as dangerous and the ranking says nothing. A build is allowed
+    # to be merely inconvenienced by one of its five worst matchups.
+    difficulty_level: Literal["Low Difficulty", "Medium Difficulty", "High Difficulty"]
     explanation: str = Field(
         description="Justification why this build suffers against this killer (for hover)"
+    )
+
+
+class CounterPerkBlock(BaseModel):
+    """A perk the OTHER side brings that blunts this build.
+
+    The mirror of counter_killers, and the only grounded answer to "what beats
+    a Killer build": maps are not in the data, so a list of bad maps would be
+    invention, while every perk here is checked against MongoDB like the rest.
+    """
+
+    perk_name: str = Field(
+        description="Official perk name belonging to the opposing role, in English"
+    )
+    explanation: str = Field(
+        description=(
+            "How it blunts this build and what to do about it, "
+            "in the user's language"
+        )
     )
 
 
@@ -134,13 +214,23 @@ class DbDBuildSchema(BaseModel):
     difficulty_rating: int = Field(
         ge=1, le=4, description="Build execution difficulty from 1 to 4"
     )
-    build_score: int = Field(ge=1, le=10, description="Overall rating from 1 to 10")
 
-    perks: list[str] = Field(
-        min_length=4, max_length=4, description="Exactly 4 perk names"
+    perks: list[PerkChoice] = Field(
+        min_length=4, max_length=4, description="Exactly 4 perks"
     )
     item_kits: list[ItemKit] = Field(
         min_length=2, max_length=2, description="Exactly 2 item/addon kits"
+    )
+
+    axes: list[BuildAxis] = Field(
+        min_length=4,
+        max_length=4,
+        description="The four axes for this role, each scored once",
+    )
+    synergies: list[Synergy] = Field(
+        min_length=2,
+        max_length=3,
+        description="How the chosen pieces work together",
     )
 
     target_audience: list[TargetAudienceBlock] = Field(min_length=2, max_length=3)
@@ -152,6 +242,14 @@ class DbDBuildSchema(BaseModel):
         min_length=5,
         max_length=5,
         description="Exactly 5 counter killers for Survivor; null for Killer",
+    )
+    counter_perks: list[CounterPerkBlock] = Field(
+        min_length=3,
+        max_length=3,
+        description=(
+            "Exactly 3 perks of the OPPOSING role that blunt this build. "
+            "Killer perks for a Survivor build, Survivor perks for a Killer build."
+        ),
     )
 
     @model_validator(mode="after")

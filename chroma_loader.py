@@ -6,6 +6,8 @@ import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 from dotenv import load_dotenv
 
+from naming import canonical_perk_character, perk_character_index
+
 
 load_dotenv()
 
@@ -206,13 +208,15 @@ def add_in_batches(collection, documents, metadatas, ids, batch_size=100):
         start = end
 
 
-def build_perk_records(perks_data):
+def build_perk_records(perks_data, character_index):
     buffer = RecordBuffer()
 
     for perk in perks_data["perks"]:
         name = perk["name"]
         role = perk["role"]
-        character = perk["character"]
+        # Must match what `resolve_owner` produces at query time, or the owner
+        # filter on perk chunks silently matches nothing.
+        character = canonical_perk_character(perk, character_index)
         description = perk["description"]
 
         buffer.add(
@@ -462,8 +466,10 @@ def save_all_to_chroma(data_dir):
     survivors_data = load_json(os.path.join(data_dir, "survivors.json"))
     items_data = load_json(os.path.join(data_dir, "items.json"))
 
+    character_index = perk_character_index(survivors_data, killers_data)
+
     sources = [
-        ("perks", build_perk_records(perks_data)),
+        ("perks", build_perk_records(perks_data, character_index)),
         ("mechanics", build_mechanics_records(perks_data)),
         ("killer_docs", build_killer_records(killers_data)),
         ("survivor_docs", build_survivor_records(survivors_data)),

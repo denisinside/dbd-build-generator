@@ -113,3 +113,69 @@ def test_find_item_type_document_tolerates_singular(db):
 )
 def test_resolve_owner(db, role, owner, expected):
     assert resolve_owner(db, role, owner) == expected
+
+
+# --- perk owners ------------------------------------------------------------
+
+
+PERK_OWNER_DATA = (
+    {"survivors": [{"name": "Meg Thomas"}, {"name": "Eleven"}]},
+    {
+        "killers": [
+            {"name": "Anna", "metadata": {"Title": "The Huntress", "Name": "Anna"}},
+            {"name": "Carmina Mora", "metadata": {"Title": "The Artist"}},
+        ]
+    },
+)
+
+
+@pytest.fixture(scope="module")
+def owner_index():
+    from naming import perk_character_index
+
+    return perk_character_index(*PERK_OWNER_DATA)
+
+
+@pytest.mark.parametrize(
+    "role, wiki_name, expected",
+    [
+        ("Survivor", "Meg", "Meg Thomas"),
+        ("Survivor", "Eleven", "Eleven"),
+        ("Killer", "Artist", "The Artist"),
+        ("Killer", "Anna", "The Huntress"),
+        # Shared perks have no character page to canonicalise against.
+        ("Survivor", "General", "General"),
+        ("Killer", "General", "General"),
+    ],
+)
+def test_perk_owners_are_canonicalised(owner_index, role, wiki_name, expected):
+    from naming import canonical_perk_character
+
+    perk = {"role": role, "character": wiki_name}
+
+    assert canonical_perk_character(perk, owner_index) == expected
+
+
+def test_a_survivor_first_name_is_never_read_as_a_killer(owner_index):
+    """Indexed per role, so "Anna" means The Huntress only on a Killer perk."""
+    from naming import canonical_perk_character
+
+    assert canonical_perk_character({"role": "Survivor", "character": "Anna"}, owner_index) == (
+        "Anna"
+    )
+
+
+def test_the_wiki_patch_banner_is_stripped_from_descriptions():
+    """Editorial wiki chrome that was ending up in perk tooltips."""
+    from wiki_utils import PATCH_BANNER
+
+    raw = (
+        "This description is based on the changes announced for or featured in "
+        "the upcoming Patch 10.1.0 Starting to run triggers Sprint Burst."
+    )
+
+    assert PATCH_BANNER.sub("", raw) == "Starting to run triggers Sprint Burst."
+    # Only as a prefix, and only the real banner.
+    assert PATCH_BANNER.sub("", "A perk. This description is based on X") == (
+        "A perk. This description is based on X"
+    )

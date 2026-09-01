@@ -4,7 +4,13 @@ import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
-from naming import killer_search_keys, perk_search_keys, survivor_search_keys
+from naming import (
+    canonical_perk_character,
+    killer_search_keys,
+    perk_character_index,
+    perk_search_keys,
+    survivor_search_keys,
+)
 
 
 load_dotenv()
@@ -42,10 +48,14 @@ def replace_collection(db, collection_name, documents):
     return count
 
 
-def save_perks_to_mongo(db, perks_data):
+def save_perks_to_mongo(db, perks_data, character_index):
     perks = perks_data["perks"]
 
     for perk in perks:
+        # The wiki's perk table names owners in short form ("Meg"); every
+        # other lookup uses the full name. Stored canonical so the UI can show
+        # "Meg Thomas" and so owner filters line up with the Chroma chunks.
+        perk["character"] = canonical_perk_character(perk, character_index)
         perk["search_keys"] = perk_search_keys(perk)
 
     db["perks"].create_index("search_keys")
@@ -101,8 +111,10 @@ def save_all_to_mongo(data_dir):
     survivors_data = load_json(os.path.join(data_dir, "survivors.json"))
     items_data = load_json(os.path.join(data_dir, "items.json"))
 
+    character_index = perk_character_index(survivors_data, killers_data)
+
     counts = {
-        "perks": save_perks_to_mongo(db, perks_data),
+        "perks": save_perks_to_mongo(db, perks_data, character_index),
         "killers": save_killers_to_mongo(db, killers_data),
         "survivors": save_survivors_to_mongo(db, survivors_data),
         "items_addons": save_items_to_mongo(db, items_data),

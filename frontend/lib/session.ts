@@ -80,3 +80,61 @@ export function setAuthToken(token: string) {
 export function clearAuthToken() {
   write(AUTH_KEY, "")
 }
+
+
+const PENDING_PROMPT_KEY = "dbd-pending-prompt"
+
+
+export interface PendingPrompt {
+  prompt: string
+  /** true: start generating on arrival. false: just refill the field. */
+  autoRun: boolean
+}
+
+
+/**
+ * Hand a prompt to the generator page across one navigation.
+ *
+ * Two callers, two intents: "Another variant" wants the run to start by
+ * itself, while the sign-in gate only wants the field refilled once the
+ * visitor comes back from the provider.
+ *
+ * sessionStorage, not the URL: a `?prompt=...` link that auto-starts would
+ * let anyone post a link that spends money on every viewer who opens it, and
+ * there is no global budget cap to stop that. A tab-local handoff cannot be
+ * shared, so only a real click starts a run. It also survives the full page
+ * navigation the OAuth handshake makes, which React state would not.
+ */
+export function setPendingPrompt(prompt: string, autoRun: boolean) {
+  try {
+    window.sessionStorage.setItem(
+      PENDING_PROMPT_KEY,
+      JSON.stringify({ prompt, autoRun } satisfies PendingPrompt),
+    )
+  } catch {
+    // Falls back to an empty generator page, which is still usable.
+  }
+}
+
+
+/** Read and consume the handed-over prompt. Null when there is none. */
+export function takePendingPrompt(): PendingPrompt | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  try {
+    const stored = window.sessionStorage.getItem(PENDING_PROMPT_KEY)
+    window.sessionStorage.removeItem(PENDING_PROMPT_KEY)
+
+    if (!stored) {
+      return null
+    }
+
+    const pending = JSON.parse(stored) as PendingPrompt
+
+    return pending.prompt ? pending : null
+  } catch {
+    return null
+  }
+}

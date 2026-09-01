@@ -55,6 +55,7 @@
   --color-dbd-accent: var(--dbd-accent);
   --color-dbd-pro: var(--dbd-pro);
   --color-dbd-con: var(--dbd-con);
+  --color-dbd-diff-low: var(--dbd-diff-low);
   --color-dbd-diff-medium: var(--dbd-diff-medium);
   --color-dbd-diff-high: var(--dbd-diff-high);
 
@@ -73,6 +74,7 @@
   --dbd-accent: oklch(0.78 0.16 70);
   --dbd-pro: oklch(0.72 0.14 155);
   --dbd-con: oklch(0.62 0.19 20);
+  --dbd-diff-low: oklch(0.74 0.15 150);
   --dbd-diff-medium: oklch(0.82 0.16 90);
   --dbd-diff-high: oklch(0.62 0.22 25);
 }

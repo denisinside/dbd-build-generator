@@ -89,6 +89,16 @@ if _provider_configured("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"):
     PROVIDERS["google"] = "Google"
 
 
+def sign_in_available():
+    """True when signing in is actually possible on this deployment.
+
+    Anything that *requires* an account has to check this: with no secret or
+    no provider credentials there is no way to get one, and demanding one
+    would leave the app unusable rather than protected.
+    """
+    return bool(AUTH_SECRET and PROVIDERS)
+
+
 def users_collection():
     from generate_build import get_mongo_db
 

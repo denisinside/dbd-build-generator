@@ -11,6 +11,7 @@ from chroma_loader import (
     build_perk_records,
     chunk_text,
 )
+from naming import perk_character_index
 
 
 def paragraphs(count, sentence="Dead by Daylight mechanics sentence. "):
@@ -116,6 +117,11 @@ ITEMS_DATA = {
 }
 
 
+SURVIVORS_DATA = {"survivors": [{"name": "Meg Thomas", "metadata": {"Name": "Meg Thomas"}}]}
+
+CHARACTER_INDEX = perk_character_index(SURVIVORS_DATA, KILLERS_DATA)
+
+
 def metadata_for(buffer, entity_name):
     return next(
         metadata
@@ -155,10 +161,17 @@ def test_item_addons_carry_their_item_category():
     assert metadata["owner"] == "Med-Kits"
 
 
-def test_perk_owner_is_the_character():
-    metadata = metadata_for(build_perk_records(PERKS_DATA), "Sprint Burst")
+def test_perk_owner_is_the_canonical_character_name():
+    """The wiki says "Meg"; every lookup says "Meg Thomas".
 
-    assert metadata["owner"] == "Meg"
+    They have to agree, or an owner-filtered perk search matches nothing at
+    all: `resolve_owner` only ever produces the long form.
+    """
+    metadata = metadata_for(
+        build_perk_records(PERKS_DATA, CHARACTER_INDEX), "Sprint Burst"
+    )
+
+    assert metadata["owner"] == "Meg Thomas"
 
 
 def test_perk_mechanics_prose_is_indexed_for_both_roles():
@@ -182,7 +195,7 @@ def test_perk_mechanics_prose_is_indexed_for_both_roles():
 @pytest.mark.parametrize(
     "buffer_factory",
     [
-        lambda: build_perk_records(PERKS_DATA),
+        lambda: build_perk_records(PERKS_DATA, CHARACTER_INDEX),
         lambda: build_mechanics_records(PERKS_DATA),
         lambda: build_killer_records(KILLERS_DATA),
         lambda: build_item_records(ITEMS_DATA),

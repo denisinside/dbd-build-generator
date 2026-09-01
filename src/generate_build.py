@@ -26,7 +26,12 @@ from chroma_loader import (  # noqa: E402
     get_openrouter_embedding_function,
 )
 from naming import normalize_name, word_spans  # noqa: E402
-from schemas import BuildRequestAnalysis, DbDBuildSchema  # noqa: E402
+from schemas import (  # noqa: E402
+    KILLER_AXES,
+    SURVIVOR_AXES,
+    BuildRequestAnalysis,
+    DbDBuildSchema,
+)
 
 
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
@@ -150,14 +155,23 @@ class Deadline:
         return self.remaining() <= 0
 
 
-def build_llm():
+# Zero temperature is right for the input gate, where the same message must
+# always be judged the same way. It is wrong for the two creative stages: with
+# it, two people asking for the same thing get byte-identical builds and a
+# "generate another" button would be pointless.
+CLASSIFY_TEMPERATURE = 0
+RESEARCH_TEMPERATURE = float(os.getenv("RESEARCH_TEMPERATURE", "0.7"))
+DRAFT_TEMPERATURE = float(os.getenv("DRAFT_TEMPERATURE", "0.6"))
+
+
+def build_llm(temperature=CLASSIFY_TEMPERATURE):
     if not OPENROUTER_API_KEY:
         raise ValueError("OPENROUTER_API_KEY is missing in .env")
 
     return ChatOpenRouter(
         model=LLM_MODEL,
         api_key=OPENROUTER_API_KEY,
-        temperature=0,
+        temperature=temperature,
         # ChatOpenRouter takes MILLISECONDS here (it maps to the SDK's
         # `timeout_ms`). Passing seconds does not just shorten the timeout, it
         # wedges the call: a sub-second budget never survives the TLS
@@ -715,12 +729,16 @@ Research rules:
 For a Survivor build, research team play, repair speed, stealth, chase,
 appropriate item kits, and exactly 5 counter Killers. Validate that each item
 addon belongs to the selected item category.
+Also research 3 Killer perks that blunt this build, and how to play around
+each one.
 """.strip()
 
     killer_prompt = """
 For a Killer build, research map control, chase, generator regression, power
 usage, and two alternative pairs of addons for the selected Killer. The final
 build must not contain counter Killers.
+Also research 3 Survivor perks that blunt this build, and how to play around
+each one. This is what stands in for counter Killers on a Killer build.
 """.strip()
 
     role_prompt = survivor_prompt if role == "Survivor" else killer_prompt
@@ -766,7 +784,7 @@ def run_research_agent(user_query, role, output_language, on_step, deadline):
 
     tools = [search_dbd_rag, lookup_mongo_entity, search_web_meta]
     tools_by_name = {agent_tool.name: agent_tool for agent_tool in tools}
-    llm = build_llm()
+    llm = build_llm(RESEARCH_TEMPERATURE)
     agent_llm = llm.bind_tools(tools)
     messages = [
         SystemMessage(content=get_system_prompt(role, output_language)),
@@ -822,6 +840,9 @@ def run_research_agent(user_query, role, output_language, on_step, deadline):
 
 def build_final_prompt(user_query, role, output_language, research_memo, errors=None):
     icons_text = ", ".join(ALLOWED_ICONS)
+    axes = SURVIVOR_AXES if role == "Survivor" else KILLER_AXES
+    axes_text = ", ".join(axes)
+    opposing_role = "Killer" if role == "Survivor" else "Survivor"
     counter_rule = (
         "counter_killers must contain exactly 5 verified Killer titles."
         if role == "Survivor"
@@ -849,7 +870,9 @@ STRICT OUTPUT RULES:
 - All prose fields must be in {output_language}.
 - No Russian language is allowed.
 - Official entity names and enum literals must stay in English.
-- Use exactly 4 verified, role-appropriate perk names.
+- Use exactly 4 verified, role-appropriate perks.
+- Every perk and every addon needs a reason: one sentence on what it does for
+  THIS build, not a restatement of its description.
 - Use exactly 2 item kits with exactly 2 verified addons each.
 - The 2 addons inside each kit must be different.
 - For Survivor, item_name is required and addons must belong to that item.
@@ -859,7 +882,16 @@ STRICT OUTPUT RULES:
 - Killer kits must use two distinct unordered addon pairs. Never repeat the
   same pair in both kits, even if the addon order is reversed.
 - {counter_rule}
-- difficulty_level must be "Medium Difficulty" or "High Difficulty".
+- counter_perks must contain exactly 3 verified {opposing_role} perks that blunt
+  this build, each with what it does to you and how to play around it.
+- difficulty_level must be "Low Difficulty", "Medium Difficulty" or "High
+  Difficulty". Use the whole range: not every bad matchup is a nightmare.
+- axes must score exactly these four, once each: {axes_text}. Use the full 1-5
+  range: a build that is weak on an axis should score 1 or 2 there. Do not
+  give every axis the same score.
+- synergies must describe 2-3 real interactions, and may only name perks,
+  addons, items or the Killer power that are part of THIS build. Spell them
+  exactly as chosen. Never mention a perk you did not select.
 - Icons must be selected only from: {icons_text}.
 - Do not invent entities or mechanics.
 {correction}
@@ -875,18 +907,18 @@ def canonicalize_and_validate_build(build, expected_role, db=None):
         errors.append(f"role must be {expected_role}")
 
     canonical_perks = []
-    for perk_name in data["perks"]:
-        perk = find_perk_document(db, perk_name)
+    for choice in data["perks"]:
+        perk = find_perk_document(db, choice["name"])
 
         if perk is None:
-            errors.append(f"perk not found: {perk_name}")
+            errors.append(f"perk not found: {choice['name']}")
             continue
 
         if perk.get("role") != expected_role:
-            errors.append(f"perk has wrong role: {perk_name}")
+            errors.append(f"perk has wrong role: {choice['name']}")
             continue
 
-        canonical_perks.append(perk["name"])
+        canonical_perks.append({**choice, "name": perk["name"]})
 
     if len(canonical_perks) == 4:
         data["perks"] = canonical_perks
@@ -924,31 +956,32 @@ def canonicalize_and_validate_build(build, expected_role, db=None):
             kit["item_name"] = item["name"]
             canonical_addons = []
 
-            for addon_name in kit["addons"]:
-                addon = find_item_addon(item_type, addon_name)
+            for choice in kit["addons"]:
+                addon = find_item_addon(item_type, choice["name"])
 
                 if addon is None:
                     errors.append(
-                        f"addon {addon_name} does not belong to {item['name']}"
+                        f"addon {choice['name']} does not belong to {item['name']}"
                     )
                 else:
-                    canonical_addons.append(addon["name"])
+                    canonical_addons.append({**choice, "name": addon["name"]})
 
             if len(canonical_addons) == 2:
                 kit["addons"] = canonical_addons
         else:
             kit["item_name"] = None
+            kit["item_reason"] = None
             canonical_addons = []
 
-            for addon_name in kit["addons"]:
-                addon = find_killer_addon(chosen_killer, addon_name)
+            for choice in kit["addons"]:
+                addon = find_killer_addon(chosen_killer, choice["name"])
 
                 if addon is None:
                     errors.append(
-                        f"addon {addon_name} does not belong to selected Killer"
+                        f"addon {choice['name']} does not belong to selected Killer"
                     )
                 else:
-                    canonical_addons.append(addon["name"])
+                    canonical_addons.append({**choice, "name": addon["name"]})
 
             if len(canonical_addons) == 2:
                 kit["addons"] = canonical_addons
@@ -956,7 +989,7 @@ def canonicalize_and_validate_build(build, expected_role, db=None):
     kit_signatures = []
     for kit in data["item_kits"]:
         normalized_addons = [
-            normalize_name(addon_name) for addon_name in kit["addons"]
+            normalize_name(addon["name"]) for addon in kit["addons"]
         ]
 
         if len(set(normalized_addons)) != 2:
@@ -1000,14 +1033,112 @@ def canonicalize_and_validate_build(build, expected_role, db=None):
     elif data.get("counter_killers") is not None:
         errors.append("Killer build must set counter_killers to null")
 
+    # The mirror of counter_killers: what the other side brings against you.
+    opposing_role = "Killer" if expected_role == "Survivor" else "Survivor"
+
+    for counter in data["counter_perks"]:
+        perk = find_perk_document(db, counter["perk_name"])
+
+        if perk is None:
+            errors.append(f"counter perk not found: {counter['perk_name']}")
+        elif perk.get("role") != opposing_role:
+            errors.append(
+                f"counter perk {counter['perk_name']} must be a {opposing_role} perk"
+            )
+        else:
+            counter["perk_name"] = perk["name"]
+
+    expected_axes = SURVIVOR_AXES if expected_role == "Survivor" else KILLER_AXES
+    chosen_axes = [axis["axis"] for axis in data["axes"]]
+
+    if sorted(chosen_axes) != sorted(expected_axes):
+        errors.append(
+            f"a {expected_role} build must score exactly these axes, once each: "
+            + ", ".join(expected_axes)
+        )
+
+    errors.extend(canonicalize_synergies(data, chosen_killer))
+
     if errors:
         return None, errors
 
     return DbDBuildSchema.model_validate(data), []
 
 
+def build_entity_names(data, chosen_killer):
+    """Everything a synergy is allowed to talk about, in canonical spelling.
+
+    The character counts: "The Hillbilly + Infectious Fright" is a real thing
+    to say about a build, and rejecting it only bought a wasted retry.
+    """
+    names = {perk["name"] for perk in data["perks"]}
+    names.add(data["character_name"])
+
+    for kit in data["item_kits"]:
+        if kit.get("item_name"):
+            names.add(kit["item_name"])
+
+        names |= {addon["name"] for addon in kit["addons"]}
+
+    power_name = ((chosen_killer or {}).get("power") or {}).get("name")
+
+    if power_name:
+        names.add(power_name)
+
+    return names
+
+
+def canonicalize_synergies(data, chosen_killer):
+    """Hold synergies to the same standard as everything else.
+
+    A combo is only worth showing if it is about pieces that are actually in
+    the build; without this the model happily explains how the loadout pairs
+    with a perk it did not pick.
+    """
+    errors = []
+    known = {
+        normalize_name(name): name for name in build_entity_names(data, chosen_killer)
+    }
+
+    for synergy in data["synergies"]:
+        canonical = []
+
+        for entity in synergy["entities"]:
+            match = known.get(normalize_name(entity))
+
+            if match is None:
+                errors.append(
+                    f"synergy mentions '{entity}', which is not part of this build"
+                )
+            else:
+                canonical.append(match)
+
+        if len(canonical) != len(synergy["entities"]):
+            continue
+
+        if len(set(canonical)) < 2:
+            errors.append("a synergy must connect at least two different pieces")
+            continue
+
+        synergy["entities"] = canonical
+
+    return errors
+
+
+def derive_build_score(axes):
+    """The 1-10 headline, computed from the axis scores rather than asked for.
+
+    A model asked to rate its own build out of ten answers 7 or 8 nearly every
+    time and the number carries no information. Derived, it at least agrees
+    with the breakdown printed next to it.
+    """
+    average = sum(axis["score"] for axis in axes) / len(axes)
+
+    return max(1, min(10, round(average * 2)))
+
+
 def generate_grounded_build(user_query, role, output_language, research_memo, on_step, deadline):
-    structured_llm = build_llm().with_structured_output(DbDBuildSchema)
+    structured_llm = build_llm(DRAFT_TEMPERATURE).with_structured_output(DbDBuildSchema)
     errors = None
 
     for attempt in range(3):
@@ -1051,6 +1182,40 @@ def entity_name(value):
     return value
 
 
+def entity_reason(value):
+    """The model's justification, absent on builds saved before it existed."""
+    return value.get("reason") if isinstance(value, dict) else None
+
+
+# A Killer power article runs to a few thousand characters. That is a wall of
+# text in a hover card, and the head of it is the part that says what the power
+# does.
+#
+# ponytail: a blunt character cut. Parse the power's own summary section if the
+# truncation ever lands somewhere useless.
+POWER_SUMMARY_CHARS = 600
+
+
+def killer_power(killer):
+    """The power slot: what every Killer add-on in the build modifies."""
+    power = (killer or {}).get("power") or {}
+
+    if not power.get("name"):
+        return None
+
+    description = power.get("description") or ""
+
+    if len(description) > POWER_SUMMARY_CHARS:
+        description = description[:POWER_SUMMARY_CHARS].rsplit(" ", 1)[0] + " ..."
+
+    return {
+        "name": power["name"],
+        "description": description,
+        "icon_url": power.get("icon_url"),
+        "icon_path": power.get("icon_path"),
+    }
+
+
 def enrich_build_entity_details(data, db=None):
     db = db if db is not None else get_mongo_db()
     data = dict(data)
@@ -1065,6 +1230,10 @@ def enrich_build_entity_details(data, db=None):
     # for anyone who has not run download_media.py yet.
     data["character_portrait_url"] = metadata.get("portrait_url")
     data["character_portrait_path"] = metadata.get("portrait_path")
+    # Add-ons modify a power the page never named until now.
+    data["character_power"] = (
+        killer_power(character) if data["role"] == "Killer" else None
+    )
 
     enriched_perks = []
     for perk_value in data["perks"]:
@@ -1076,6 +1245,10 @@ def enrich_build_entity_details(data, db=None):
                 "icon_url": (perk or {}).get("icon_url"),
                 "icon_path": (perk or {}).get("icon_path"),
                 "description": (perk or {}).get("description"),
+                # Which character teaches it: without this a new player cannot
+                # tell whose Bloodweb to go through.
+                "character": (perk or {}).get("character"),
+                "reason": entity_reason(perk_value),
             }
         )
     data["perks"] = enriched_perks
@@ -1104,6 +1277,7 @@ def enrich_build_entity_details(data, db=None):
                     "icon_path": (addon or {}).get("icon_path"),
                     "description": (addon or {}).get("description"),
                     "rarity": (addon or {}).get("rarity"),
+                    "reason": entity_reason(addon_value),
                 }
             )
 
@@ -1115,10 +1289,29 @@ def enrich_build_entity_details(data, db=None):
                 "item_icon_path": (item or {}).get("icon_path"),
                 "item_description": (item or {}).get("description"),
                 "item_rarity": (item or {}).get("rarity"),
+                "item_reason": kit.get("item_reason"),
                 "addons": enriched_addons,
             }
         )
     data["item_kits"] = enriched_kits
+
+    # Computed here rather than asked of the model; see derive_build_score.
+    if data.get("axes"):
+        data["build_score"] = derive_build_score(data["axes"])
+
+    enriched_counter_perks = []
+    for counter in data.get("counter_perks") or []:
+        perk = find_perk_document(db, counter["perk_name"])
+        enriched_counter_perks.append(
+            {
+                **counter,
+                "icon_url": (perk or {}).get("icon_url"),
+                "icon_path": (perk or {}).get("icon_path"),
+                "description": (perk or {}).get("description"),
+                "character": (perk or {}).get("character"),
+            }
+        )
+    data["counter_perks"] = enriched_counter_perks
 
     if data.get("counter_killers") is not None:
         enriched_counters = []

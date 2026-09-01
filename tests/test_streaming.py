@@ -169,3 +169,60 @@ def test_a_busy_generator_answers_503_instead_of_hanging(client, monkeypatch):
     finally:
         for _ in range(main.GENERATE_CONCURRENCY):
             main._generate_slots.release()
+
+
+# --- the account gate -------------------------------------------------------
+
+
+def signed_in_as(user):
+    main.app.dependency_overrides[main.auth.optional_user] = lambda: user
+
+
+def test_generating_needs_an_account_once_sign_in_is_possible(client, monkeypatch):
+    """Hiding the button is not enough: this is a plain HTTP call."""
+    api, builds = client
+    monkeypatch.setattr(main.auth, "sign_in_available", lambda: True)
+    monkeypatch.setattr(main, "run_generate_build", scripted_build([]))
+    signed_in_as(None)
+
+    try:
+        for path in ["/api/builds/stream", "/api/builds/generate"]:
+            response = api.post(path, json={"prompt": "fast repair build"})
+
+            assert response.status_code == 401, path
+            assert "Sign in" in response.json()["detail"]
+
+        assert builds.inserted == []
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_a_signed_in_caller_generates_normally(client, monkeypatch):
+    api, builds = client
+    monkeypatch.setattr(main.auth, "sign_in_available", lambda: True)
+    monkeypatch.setattr(main, "run_generate_build", scripted_build([]))
+    signed_in_as({"_id": ObjectId(), "display_name": "streamer"})
+
+    try:
+        response = api.post("/api/builds/stream", json={"prompt": "fast repair build"})
+
+        assert response.status_code == 200
+        assert builds.inserted[0]["author_name"] == "streamer"
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_generation_stays_open_when_nobody_can_sign_in(client, monkeypatch):
+    """Requiring an account nobody can create would brick the app, not guard it."""
+    api, builds = client
+    monkeypatch.setattr(main.auth, "sign_in_available", lambda: False)
+    monkeypatch.setattr(main, "run_generate_build", scripted_build([]))
+    signed_in_as(None)
+
+    try:
+        response = api.post("/api/builds/stream", json={"prompt": "fast repair build"})
+
+        assert response.status_code == 200
+        assert builds.inserted[0]["user_id"] is None
+    finally:
+        main.app.dependency_overrides.clear()

@@ -12,7 +12,12 @@ export function PerksGrid({ perks }: PerksGridProps) {
     <ul className="grid grid-cols-2 gap-3">
       {perks.map((perk, i) => (
         <li key={`${perk.name}-${i}`} className="flex min-w-0 flex-col items-center gap-1.5 text-center">
-          <EntityTooltip name={perk.name} description={perk.description}>
+          <EntityTooltip
+            name={perk.name}
+            description={perk.description}
+            character={perk.character}
+            reason={perk.reason}
+          >
             <SmartImage
               src={perk.image}
               fallbackSrc={perk.imageFallback}

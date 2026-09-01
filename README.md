@@ -33,16 +33,18 @@ cp frontend/.env.example frontend/.env.local
 
 The important ones:
 
-| Variable | Why it matters |
-| --- | --- |
-| `MONGO_URI` | MongoDB connection string |
-| `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API. **Add your deployed frontend origin**, otherwise every request from it fails CORS |
-| `OPENROUTER_API_KEY` | Chat + embeddings |
-| `OPENROUTER_CHAT_MODEL` | Agent and structured-output model |
-| `AUTH_SECRET` | Signs session tokens. Unset means sign-in is off entirely |
-| `FRONTEND_URL` | Where the OAuth callback sends the browser back to |
-| `TAVILY_API_KEY` | Optional; `search_web_meta` is skipped without it |
-| `LANGSMITH_TRACING` | Optional tracing. Enabling it sends every user prompt to LangSmith |
+
+| Variable                | Why it matters                                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `MONGO_URI`             | MongoDB connection string                                                                                                                  |
+| `ALLOWED_ORIGINS`       | Comma-separated browser origins allowed to call the API. **Add your deployed frontend origin**, otherwise every request from it fails CORS |
+| `OPENROUTER_API_KEY`    | Chat + embeddings                                                                                                                          |
+| `OPENROUTER_CHAT_MODEL` | Agent and structured-output model                                                                                                          |
+| `AUTH_SECRET`           | Signs session tokens. Unset means sign-in is off entirely                                                                                  |
+| `FRONTEND_URL`          | Where the OAuth callback sends the browser back to                                                                                         |
+| `TAVILY_API_KEY`        | Optional; `search_web_meta` is skipped without it                                                                                          |
+| `LANGSMITH_TRACING`     | Optional tracing. Enabling it sends every user prompt to LangSmith                                                                         |
+
 
 MongoDB must be running (for example via Docker):
 
@@ -121,16 +123,18 @@ it may never pick a perk that does not exist.
 RUN_LIVE_TESTS=1 uv run pytest tests/test_live_llm.py -v
 ```
 
+
+
 ## API
 
 - `POST /api/builds/stream` — `{ "prompt": "..." }` → Server-Sent Events:
-  `step` frames as the agent researches, then one `build` frame, or one
-  `error` frame. This is what the UI uses: a build takes about a minute, and a
-  silent connection that long is cut by most proxies (Cloudflare at 100s).
+`step` frames as the agent researches, then one `build` frame, or one
+`error` frame. This is what the UI uses: a build takes about a minute, and a
+silent connection that long is cut by most proxies (Cloudflare at 100s).
 - `POST /api/builds/generate` — the same thing without progress, for scripts
 - `GET /api/builds?limit=30` — the shared feed, newest first
 - `GET /api/builds?mine=1` — the caller's own builds: their account's when
-  signed in, this browser's anonymous ones otherwise
+signed in, this browser's anonymous ones otherwise
 - `GET /api/builds/{id}` — one saved build
 - `GET /health` — liveness plus a MongoDB round-trip
 
@@ -140,14 +144,25 @@ owner tag, not a credential, and it never appears in any response.
 
 ## Sign-in
 
-Optional, and off entirely unless `AUTH_SECRET` is set. Twitch, Discord and
-Google; each appears only once its client id and secret are configured, so a
-deployment never shows a button that cannot work.
+Twitch, Discord and Google. Each appears only once its client id and secret are
+configured, so a deployment never shows a button that cannot work — if the
+header says "Sign-in is not configured", `AUTH_SECRET` or a provider's
+credentials are missing.
+
+**Generating a build requires an account**, enforced on the endpoint and not
+just in the UI: it is a plain HTTP call anyone can make directly. The
+requirement applies exactly where an account can be obtained — with no
+`AUTH_SECRET` or no provider credentials, generation stays open to anonymous
+callers, because demanding an account nobody can create would brick the app
+rather than guard it. The API prints which mode it is in at startup.
+
+Submitting a prompt while signed out saves it, offers the providers, and puts
+it back in the field on the way back.
 
 - `GET /auth/providers` — what the UI should offer; `[]` means sign-in is off
 - `GET /auth/{provider}/login?next=/path` — starts the handshake
 - `GET /auth/{provider}/callback` — provider lands here, then bounces to
-  `FRONTEND_URL/auth/callback#token=...`
+`FRONTEND_URL/auth/callback#token=...`
 - `GET /auth/me` — the signed-in account
 - `POST /auth/claim` — moves this browser's anonymous builds onto the account
 
@@ -183,7 +198,44 @@ Image fields come in pairs: `icon_path` / `portrait_path` point at the local mir
 
 - `/` — generator, the live feed of everyone's builds, and this browser's own
 - `/build/{id}` — one build, with Open Graph tags and a generated link-preview image, so a
-  build can be shared in chat or on stream
+build can be shared in chat or on stream
+
+
+
+## What a build contains
+
+Beyond the four perks and two add-on kits, every generated build carries:
+
+- a **reason per piece** — why this perk, item and add-on is in this build, as
+opposed to what the wiki says it does. The two are kept visually apart so the
+generator's opinion never reads like official text.
+- the **source character** of each perk, so a new player knows whose Bloodweb
+to grind for it.
+- the **Killer power** for Killer builds. Add-ons are power modifiers, and the
+page used to show them without ever naming what they modify. Shown once, not
+per kit: unlike a Survivor item, the power is fixed by the Killer.
+- **synergies** — 2-3 interactions between the pieces. Every name in one is
+checked against the rest of the loadout (perks, add-ons, item, Killer power,
+character), so a combo can only talk about things that are actually equipped.
+- **counter perks** — 3 perks of the *opposing* role that blunt the build, with
+what they do to you and how to play around them. Killer perks for a Survivor
+build, Survivor perks for a Killer build. This is the mirror of counter
+Killers, and the only grounded answer to "what beats a Killer build": maps
+are not in the data, so listing bad maps would be invention, while every perk
+here is validated like the rest.
+- **four scored axes** instead of one opaque rating. Survivor builds are scored
+on Chase, Information, Objective and Team Utility; Killer builds on Chase,
+Map Pressure, Slowdown and Anti-Loop. The 1-10 headline is the average of
+those, not a number the model gave itself — asked directly, a model answers
+7 or 8 whatever the build is.
+
+Counter Killers stay Survivor-only, and are rated Low / Medium / High. Three
+levels rather than two, because with only Medium and High every one of the five
+reads as a nightmare and the ranking carries no information.
+
+Builds saved before any of this simply render without those sections. The
+enrichment-only parts (power, perk character) are backfilled when an old build
+is opened.
 
 ## RAG index
 
@@ -191,18 +243,25 @@ Image fields come in pairs: `icon_path` / `portrait_path` point at the local mir
 tags each chunk with:
 
 - `category` — `perk`, `item`, `addon`, `killer_power`, `killer_lore`, `survivor_lore`,
-  `game_mechanics`
+`game_mechanics`
 - `owner` — the entity a chunk belongs to: the Killer title for a Killer add-on, the item
-  category for an item add-on, the character for a perk
+category for an item add-on, the character for a perk
 - `section` — `Overview` / `Lore` / `Trivia` for lore chunks
 
 `owner` is what makes add-on search usable: without it, a query for "chase add-on" returns
 add-ons from all 44 Killers and the model has to guess which ones it may use.
+
+Perk owners are canonicalised at ingest. The wiki's perk table names them in
+short form ("Meg", "Artist") while every lookup uses the full name ("Meg
+Thomas", "The Artist"); left as-is, an owner-filtered perk search matches
+nothing at all, silently, because `resolve_owner` only ever produces the long
+form.
 
 ## Notes
 
 - Generated builds are stored in MongoDB collection `generated_builds`.
 - Frontend uses `NEXT_PUBLIC_API_URL` if set; otherwise it defaults to `http://localhost:8000`.
 - Data and icons come from the [Dead by Daylight Wiki](https://deadbydaylight.wiki.gg) and are
-  used under CC BY-SA 4.0. This is an unofficial fan project, not affiliated with Behaviour
-  Interactive.
+used under CC BY-SA 4.0. This is an unofficial fan project, not affiliated with Behaviour
+Interactive.
+

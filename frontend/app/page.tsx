@@ -1,14 +1,22 @@
 "use client"
 
-import { FormEvent, useEffect, useRef, useState } from "react"
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LoaderCircle, Sparkles } from "lucide-react"
 import { Footer } from "@/components/dbd/footer"
-import { SignIn } from "@/components/dbd/sign-in"
+import { ProviderButtons, SignIn } from "@/components/dbd/sign-in"
 import { SmartImage } from "@/components/dbd/smart-image"
-import { buildPath, fetchFeed, fetchMe, fetchMyBuilds, streamBuild } from "@/lib/api"
-import type { AuthUser, BuildStep } from "@/lib/api"
+import {
+  buildPath,
+  fetchFeed,
+  fetchMe,
+  fetchMyBuilds,
+  fetchProviders,
+  streamBuild,
+} from "@/lib/api"
+import type { AuthUser, BuildStep, SignInProvider } from "@/lib/api"
+import { setPendingPrompt, takePendingPrompt, type PendingPrompt } from "@/lib/session"
 import type { BuildSummary } from "@/types/build"
 
 
@@ -31,6 +39,8 @@ export default function Page() {
   const [mine, setMine] = useState<BuildSummary[]>([])
   const [steps, setSteps] = useState<BuildStep[]>([])
   const [user, setUser] = useState<AuthUser | null>(null)
+  const [providers, setProviders] = useState<SignInProvider[]>([])
+  const [signInWanted, setSignInWanted] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -73,23 +83,96 @@ export default function Page() {
     }
   }, [identity])
 
-  async function handleGenerate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError("")
-    setSteps([])
-    setGenerating(true)
+  useEffect(() => {
+    // Which providers exist is fixed by the server's configuration, so this
+    // is read once rather than on every feed poll.
+    let cancelled = false
 
-    try {
-      const build = await streamBuild(prompt, (step) =>
-        setSteps((current) => [...current, step]),
-      )
+    fetchProviders()
+      .then((available) => {
+        if (!cancelled) {
+          setProviders(available)
+        }
+      })
+      .catch(() => {
+        // Treated as "sign-in unavailable", which matches what the API
+        // enforces when it has no credentials.
+      })
 
-      // Every build lives at its own URL, so it can be shared straight away.
-      router.push(buildPath(build.id))
-    } catch (requestError) {
-      setError(getErrorMessage(requestError))
-      setGenerating(false)
+    return () => {
+      cancelled = true
     }
+  }, [])
+
+  const generate = useCallback(
+    async function generate(text: string) {
+      setPrompt(text)
+      setError("")
+      setSteps([])
+      setGenerating(true)
+
+      try {
+        const build = await streamBuild(text, (step) =>
+          setSteps((current) => [...current, step]),
+        )
+
+        // Every build lives at its own URL, so it can be shared straight away.
+        router.push(buildPath(build.id))
+      } catch (requestError) {
+        setError(getErrorMessage(requestError))
+        setGenerating(false)
+      }
+    },
+    [router],
+  )
+
+  // Survives the double mount React runs in development: the first pass
+  // already consumed the handed-over prompt, so the second has to read it
+  // from here or the run never starts.
+  const handedOver = useRef<PendingPrompt | null>(null)
+
+  useEffect(() => {
+    // Two things land here with a prompt in hand: "Another variant", which
+    // wants the run to start itself, and coming back from a sign-in, which
+    // only wants the field refilled. It is consumed on read, so reloading
+    // does not repeat either.
+    const pending = takePendingPrompt() ?? handedOver.current
+
+    if (!pending) {
+      return
+    }
+
+    handedOver.current = pending
+
+    // Deferred by a tick so this is not a synchronous setState inside an
+    // effect, and so leaving the page before it fires cancels it.
+    const kickoff = setTimeout(() => {
+      if (pending.autoRun) {
+        void generate(pending.prompt)
+      } else {
+        setPrompt(pending.prompt)
+      }
+    }, 0)
+
+    return () => clearTimeout(kickoff)
+  }, [generate])
+
+  // Mirrors what the API enforces: an account is required exactly where one
+  // can actually be obtained.
+  const mustSignIn = providers.length > 0 && user === null
+
+  function handleGenerate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (mustSignIn) {
+      // Kept across the full page navigation the handshake makes, so the
+      // prompt is still there when they come back.
+      setPendingPrompt(prompt, false)
+      setSignInWanted(true)
+      return
+    }
+
+    void generate(prompt)
   }
 
   if (generating) {
@@ -101,9 +184,17 @@ export default function Page() {
       <AtmosphericBackground />
 
       <section className="mx-auto flex w-full max-w-6xl flex-col px-4 py-14 md:px-6 md:py-20">
-        <div className="flex justify-end">
-          <SignIn user={user} onSignOut={() => setIdentity((n) => n + 1)} />
-        </div>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-dbd-border/60 pb-4">
+          <span className="font-[family-name:var(--font-oswald)] text-sm font-semibold uppercase tracking-[0.2em] text-dbd-muted">
+            DBD Build Generator
+          </span>
+          <SignIn
+            user={user}
+            providers={providers}
+            onSignOut={() => setIdentity((n) => n + 1)}
+            onBeforeSignIn={() => setPendingPrompt(prompt, false)}
+          />
+        </header>
 
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-dbd-purple">
@@ -144,9 +235,27 @@ export default function Page() {
             className="flex items-center justify-center gap-2 rounded-lg bg-dbd-purple px-5 py-3 font-[family-name:var(--font-oswald)] text-sm font-bold uppercase tracking-wider text-white transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-dbd-purple focus:ring-offset-2 focus:ring-offset-dbd-bg"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
-            Generate Build
+            {mustSignIn ? "Sign in to generate" : "Generate Build"}
           </button>
         </form>
+
+        {signInWanted && mustSignIn ? (
+          <div
+            role="alert"
+            className="mx-auto mt-5 flex w-full max-w-3xl flex-col gap-3 rounded-lg border border-dbd-purple/40 bg-dbd-purple/10 px-4 py-4"
+          >
+            <p className="text-sm text-dbd-text">
+              Generating a build needs an account. Your prompt is saved and will be
+              waiting when you come back.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <ProviderButtons
+                providers={providers}
+                onBeforeSignIn={() => setPendingPrompt(prompt, false)}
+              />
+            </div>
+          </div>
+        ) : null}
 
         {error ? (
           <p
@@ -175,7 +284,9 @@ export default function Page() {
             emptyText={
               user
                 ? "Builds you generate show up here."
-                : "Builds you generate in this browser show up here. Sign in to keep them."
+                : mustSignIn
+                  ? "Sign in to generate builds and keep them here."
+                  : "Builds you generate in this browser show up here."
             }
             columns=""
           />

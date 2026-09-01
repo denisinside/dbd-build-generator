@@ -58,6 +58,55 @@ def word_spans(value):
     }
 
 
+def character_keys(value):
+    """Every short form a perk row might use for one character."""
+    keys = name_variants(value)
+    first_word = normalize_name(value).removeprefix("the ").split(" ")[0]
+
+    return {key for key in keys | {first_word} if key}
+
+
+def perk_character_index(survivors_data, killers_data):
+    """Short perk-character names -> the canonical name used everywhere else.
+
+    Perk rows on the wiki name their owner in short form ("Meg", "Artist"),
+    while every lookup and every other Chroma chunk uses the full name ("Meg
+    Thomas", "The Artist"). Left unmapped, the `owner` filter on a perk search
+    can never match anything: `resolve_owner` only ever produces the long form
+    and the chunks only ever carry the short one.
+
+    Indexed per role, so a Survivor's first name can never be mistaken for a
+    Killer's.
+    """
+    survivors = {}
+    killers = {}
+
+    for survivor in survivors_data["survivors"]:
+        for key in character_keys(survivor.get("name")):
+            survivors.setdefault(key, survivor["name"])
+
+    for killer in killers_data["killers"]:
+        metadata = killer.get("metadata") or {}
+        canonical = metadata.get("Title") or killer.get("name")
+
+        for source in [canonical, metadata.get("Name"), killer.get("name")]:
+            for key in character_keys(source):
+                killers.setdefault(key, canonical)
+
+    return {"Survivor": survivors, "Killer": killers}
+
+
+def canonical_perk_character(perk, index):
+    """One perk's owner in canonical form, or its original value if unknown.
+
+    Shared perks ("General") and anyone the wiki names in a way the character
+    pages do not are left alone rather than guessed at.
+    """
+    by_role = index.get(perk.get("role")) or {}
+
+    return by_role.get(normalize_name(perk.get("character"))) or perk.get("character")
+
+
 def perk_search_keys(perk):
     return sorted(name_variants(perk.get("name")))
 

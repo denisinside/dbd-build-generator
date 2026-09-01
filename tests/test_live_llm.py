@@ -17,6 +17,7 @@ import pytest
 
 import generate_build
 from generate_build import (
+    derive_build_score,
     find_item_addon,
     find_item_document,
     find_killer_addon,
@@ -24,7 +25,7 @@ from generate_build import (
     find_perk_document,
     find_survivor_document,
 )
-from schemas import OutputLanguage
+from schemas import KILLER_AXES, SURVIVOR_AXES, OutputLanguage
 
 
 pytestmark = pytest.mark.skipif(
@@ -49,6 +50,8 @@ def assert_fully_grounded(build, db, expected_role):
         document = find_perk_document(db, perk["name"])
         assert document is not None, f"invented perk: {perk['name']}"
         assert document["role"] == expected_role, f"wrong-role perk: {perk['name']}"
+        assert perk["reason"], f"no reason given for {perk['name']}"
+        assert perk["character"], f"no source character for {perk['name']}"
 
     if expected_role == "Survivor":
         assert find_survivor_document(db, build["character_name"]) is not None
@@ -63,6 +66,9 @@ def assert_fully_grounded(build, db, expected_role):
         assert len(kit["addons"]) == 2
         addon_names = [addon["name"] for addon in kit["addons"]]
         assert len(set(addon_names)) == 2, f"duplicate addon in kit: {addon_names}"
+
+        for addon in kit["addons"]:
+            assert addon["reason"], f"no reason given for {addon['name']}"
 
         if expected_role == "Survivor":
             item, item_type = find_item_document(db, kit["item_name"])
@@ -89,8 +95,52 @@ def assert_fully_grounded(build, db, expected_role):
 
         for counter in build["counter_killers"]:
             assert find_killer_document(db, counter["killer_name"]) is not None
+
+        assert build["character_power"] is None
     else:
         assert build["counter_killers"] is None
+        # Add-ons modify the power, so the power has to be on the page.
+        assert build["character_power"]["name"], "Killer build has no power slot"
+        assert build["character_power"]["description"]
+
+    expected_axes = SURVIVOR_AXES if expected_role == "Survivor" else KILLER_AXES
+    assert sorted(axis["axis"] for axis in build["axes"]) == sorted(expected_axes)
+    assert all(axis["reason"] for axis in build["axes"])
+    # The headline number must agree with the breakdown printed beside it.
+    assert build["build_score"] == derive_build_score(build["axes"])
+
+    equipped = {perk["name"] for perk in build["perks"]}
+    for kit in build["item_kits"]:
+        equipped |= {addon["name"] for addon in kit["addons"]}
+
+        if kit["item_name"]:
+            equipped.add(kit["item_name"])
+
+    if build["character_power"]:
+        equipped.add(build["character_power"]["name"])
+
+    assert 2 <= len(build["synergies"]) <= 3
+
+    for synergy in build["synergies"]:
+        assert synergy["explanation"]
+
+        for entity in synergy["entities"]:
+            assert entity in equipped, f"synergy names {entity}, which is not equipped"
+
+    # The mirror of counter_killers, and the only thing a Killer build has
+    # here: what the other side brings against you.
+    opposing_role = "Killer" if expected_role == "Survivor" else "Survivor"
+    assert len(build["counter_perks"]) == 3
+
+    for counter in build["counter_perks"]:
+        perk = find_perk_document(db, counter["perk_name"])
+        assert perk is not None, f"invented counter perk: {counter['perk_name']}"
+        assert perk["role"] == opposing_role, (
+            f"counter perk {counter['perk_name']} is not a {opposing_role} perk"
+        )
+        assert counter["explanation"]
+        assert counter["description"]
+        assert counter["icon_path"] or counter["icon_url"]
 
 
 def test_a_survivor_build_is_fully_grounded(real_db):
@@ -103,6 +153,11 @@ def test_a_survivor_build_is_fully_grounded(real_db):
     assert_fully_grounded(build, real_db, "Survivor")
     # The UI renders these directly; a null here is a broken card.
     assert all(perk["description"] for perk in build["perks"])
+    # Wiki editorial chrome must never reach a tooltip.
+    assert not any(
+        perk["description"].startswith("This description is based on")
+        for perk in build["perks"]
+    )
     assert build["build_title"]
     assert [stage for stage, _ in steps][0] == "classifying"
     assert any(stage == "research" for stage, _ in steps)
@@ -126,6 +181,18 @@ def test_a_named_killer_request_uses_that_killer(real_db):
 
     assert_fully_grounded(build, real_db, "Killer")
     assert build["character_name"] == "The Huntress"
+
+
+def test_a_killer_build_now_says_what_beats_it(real_db):
+    """The asymmetry this closes: a Killer build used to show nothing here."""
+    build = generate_build.run_generate_build(
+        "Killer build for The Trapper focused on area denial."
+    )
+
+    assert_fully_grounded(build, real_db, "Killer")
+    assert build["counter_killers"] is None
+    assert len(build["counter_perks"]) == 3
+    assert all(counter["explanation"] for counter in build["counter_perks"])
 
 
 # The classification gate is one model call, so these stay cheap.

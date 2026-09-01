@@ -6,6 +6,11 @@ export const DIFFICULTY_CONFIG: Record<
   Difficulty,
   { label: string; dotClass: string; textClass: string }
 > = {
+  low: {
+    label: "Low Difficulty",
+    dotClass: "bg-dbd-diff-low",
+    textClass: "text-dbd-diff-low",
+  },
   medium: {
     label: "Medium Difficulty",
     dotClass: "bg-dbd-diff-medium",
@@ -18,4 +23,4 @@ export const DIFFICULTY_CONFIG: Record<
   },
 }
 
-export const DIFFICULTY_ORDER: Difficulty[] = ["medium", "high"]
+export const DIFFICULTY_ORDER: Difficulty[] = ["low", "medium", "high"]

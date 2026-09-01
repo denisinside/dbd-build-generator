@@ -8,7 +8,7 @@ generation -> grounding retry -> enrichment -> progress events.
 from collections import deque
 
 import pytest
-from conftest import killer_build, survivor_build
+from conftest import choices, killer_build, survivor_build
 from langchain_core.messages import AIMessage
 
 import generate_build
@@ -75,7 +75,7 @@ def wired(db, monkeypatch):
 
 def run_with(monkeypatch, chat_responses, structured):
     llm = ScriptedLLM(chat_responses, structured)
-    monkeypatch.setattr(generate_build, "build_llm", lambda: llm)
+    monkeypatch.setattr(generate_build, "build_llm", lambda *args, **kwargs: llm)
     steps = []
     result = generate_build.run_generate_build(
         "Survivor build for fast repairs",
@@ -150,7 +150,9 @@ def test_progress_is_reported_for_every_stage(wired, monkeypatch):
 
 
 def test_a_grounding_error_triggers_a_corrected_second_attempt(wired, monkeypatch):
-    invented = survivor_build(perks=["Sprint Burst", "Adrenaline", "Déjà Vu", "Made Up Perk"])
+    invented = survivor_build(
+        perks=choices("Sprint Burst", "Adrenaline", "Déjà Vu", "Made Up Perk")
+    )
 
     build, steps, llm = run_with(
         monkeypatch,
@@ -165,9 +167,15 @@ def test_a_grounding_error_triggers_a_corrected_second_attempt(wired, monkeypatc
     )
 
     assert build["perks"][3]["name"] == "Déjà Vu"
-    # The retry prompt has to name the error, or the model repeats it.
+    # The retry prompt has to name the errors, or the model repeats them.
     assert "perk not found: Made Up Perk" in llm.prompts[-1]
-    assert ("drafting", "Fixing 1 grounding error(s)") in steps
+    # Dropping the perk also orphaned a synergy that named it, and that is
+    # caught in the same pass rather than shipping a combo about nothing.
+    assert (
+        "synergy mentions 'Windows of Opportunity', which is not part of this build"
+        in llm.prompts[-1]
+    )
+    assert ("drafting", "Fixing 2 grounding error(s)") in steps
 
 
 def test_a_killer_prompt_skips_counter_killers(wired, monkeypatch):
@@ -178,7 +186,7 @@ def test_a_killer_prompt_skips_counter_killers(wired, monkeypatch):
             DbDBuildSchema: [DbDBuildSchema.model_validate(killer_build())],
         },
     )
-    monkeypatch.setattr(generate_build, "build_llm", lambda: llm)
+    monkeypatch.setattr(generate_build, "build_llm", lambda *args, **kwargs: llm)
 
     build = generate_build.run_generate_build("Killer build with map pressure")
 
@@ -202,7 +210,7 @@ def test_a_rejected_prompt_never_reaches_the_agent(wired, monkeypatch):
             ]
         },
     )
-    monkeypatch.setattr(generate_build, "build_llm", lambda: llm)
+    monkeypatch.setattr(generate_build, "build_llm", lambda *args, **kwargs: llm)
 
     result = generate_build.run_generate_build("what is the weather today")
 
@@ -215,7 +223,7 @@ def test_a_rejected_prompt_never_reaches_the_agent(wired, monkeypatch):
 def test_research_stops_when_the_budget_is_spent(wired, monkeypatch):
     """An expired deadline must end the loop instead of burning 12 more calls."""
     llm = ScriptedLLM([AIMessage(content="Partial memo.")], {})
-    monkeypatch.setattr(generate_build, "build_llm", lambda: llm)
+    monkeypatch.setattr(generate_build, "build_llm", lambda *args, **kwargs: llm)
 
     spent = generate_build.Deadline(seconds=-1)
     memo = generate_build.run_research_agent(

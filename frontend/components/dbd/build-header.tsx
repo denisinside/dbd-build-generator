@@ -2,6 +2,7 @@ import type { Build } from "@/types/build"
 import { CharacterCard } from "./character-card"
 import { PerksGrid } from "./perks-grid"
 import { LoadoutCard } from "./loadout-card"
+import { PowerCard } from "./power-card"
 import { BuildEvaluation } from "./build-evaluation"
 
 interface BuildHeaderProps {
@@ -26,6 +27,9 @@ export function BuildHeader({ build }: BuildHeaderProps) {
         {/* CENTER — loadouts */}
         <div className="flex flex-col items-center gap-3">
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start sm:gap-5">
+            {/* The power is fixed by the Killer, so it appears once beside the
+                two add-on pairs rather than being repeated inside each. */}
+            {build.power ? <PowerCard power={build.power} /> : null}
             {build.loadouts.map((loadout, i) => (
               <LoadoutCard key={i} loadout={loadout} />
             ))}
