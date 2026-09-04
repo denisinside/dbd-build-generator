@@ -193,12 +193,14 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Build prose is generated text in whatever language the visitor wrote
+       in: one long word must wrap, not widen the page. */
+    overflow-wrap: break-word;
   }
 }
 
 .entity-tooltip-trigger:hover .entity-tooltip-content,
 .entity-tooltip-trigger:focus .entity-tooltip-content,
 .entity-tooltip-trigger:focus-within .entity-tooltip-content {
-  visibility: visible;
-  opacity: 1;
+  display: block;
 }

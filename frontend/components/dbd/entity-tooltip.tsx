@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { cn } from "@/lib/utils"
 
 
 interface EntityTooltipProps {
@@ -31,11 +32,21 @@ export function EntityTooltip({
 
       <div
         role="tooltip"
-        className="entity-tooltip-content pointer-events-none invisible absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 rounded-lg border border-dbd-border bg-[oklch(0.11_0.015_285)] p-4 text-left opacity-0 shadow-2xl transition"
+        className={cn(
+          // Hidden with `display: none`, not `visibility`: an invisible
+          // absolute box 288px wide still widens the document, which is what
+          // let a phone scroll sideways.
+          "entity-tooltip-content pointer-events-none hidden rounded-lg border border-dbd-border bg-[oklch(0.11_0.015_285)] p-4 text-left shadow-2xl",
+          // Phone: a sheet pinned to the viewport, so a tooltip on the
+          // left-most icon cannot fall off the left edge.
+          "fixed bottom-3 left-3 right-3 z-50",
+          // Wide enough for the anchored tooltip: back under the trigger.
+          "sm:absolute sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-full sm:mt-3 sm:w-72 sm:-translate-x-1/2",
+        )}
       >
         <div
           aria-hidden
-          className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-dbd-border bg-[oklch(0.11_0.015_285)]"
+          className="absolute -top-1.5 left-1/2 hidden h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-dbd-border bg-[oklch(0.11_0.015_285)] sm:block"
         />
         <p className="relative font-[family-name:var(--font-oswald)] text-sm font-semibold text-dbd-text">
           {name}

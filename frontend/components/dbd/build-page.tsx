@@ -32,7 +32,7 @@ export function BuildPage({ build, backHref = "/" }: BuildPageProps) {
         className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,oklch(0.2_0.04_300/0.5),transparent_55%),radial-gradient(ellipse_at_bottom,oklch(0.16_0.03_320/0.4),transparent_60%)]"
       />
 
-      <div className="mx-auto w-full max-w-4xl px-4 pb-14 md:px-5">
+      <div className="mx-auto w-full max-w-4xl px-3 pb-14 sm:px-4 md:px-5">
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <Link
             href={backHref}

@@ -6,7 +6,9 @@ interface BuildEvaluationProps {
 
 export function BuildEvaluation({ evaluation }: BuildEvaluationProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 text-center">
+    // A row on a phone: as its own stacked block it cost a whole screenful of
+    // height to say one number.
+    <div className="flex flex-row items-center justify-center gap-3 text-center sm:flex-col sm:gap-2">
       <span className="text-xs font-semibold uppercase tracking-[0.15em] text-dbd-muted">
         Build Score
       </span>

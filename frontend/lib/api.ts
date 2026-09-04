@@ -23,6 +23,20 @@ export interface BuildStep {
 }
 
 
+/**
+ * A generation as the server remembers it, for a client that lost the stream.
+ *
+ * `running` still has a worker thread behind it; `done` and `error` are the
+ * final answer and stay readable for half an hour.
+ */
+export interface BuildJob {
+  status: "running" | "done" | "error"
+  steps: BuildStep[]
+  build: GeneratedBuild | null
+  error: { status: number; detail: string } | null
+}
+
+
 export interface AuthUser {
   id: string
   provider: string
@@ -190,6 +204,12 @@ function parseFrame(frame: string) {
 export async function streamBuild(
   prompt: string,
   onStep: (step: BuildStep) => void,
+  /**
+   * Called with the job id before any progress arrives. Storing it is what
+   * lets the caller reattach after the connection dies, so the build is not
+   * lost when a phone locks mid-generation.
+   */
+  onJob: (jobId: string) => void = () => {},
 ): Promise<GeneratedBuild> {
   const response = await fetch(`${API_URL}/api/builds/stream`, {
     method: "POST",
@@ -225,7 +245,9 @@ export async function streamBuild(
       const { event, data } = parseFrame(buffer.slice(0, boundary))
       buffer = buffer.slice(boundary + 2)
 
-      if (event === "step") {
+      if (event === "job") {
+        onJob((JSON.parse(data) as { job_id: string }).job_id)
+      } else if (event === "step") {
         onStep(JSON.parse(data) as BuildStep)
       } else if (event === "build") {
         build = JSON.parse(data) as GeneratedBuild
@@ -246,6 +268,27 @@ export async function streamBuild(
   }
 
   return build
+}
+
+
+/**
+ * Progress of a generation whose stream is gone, or null once the server has
+ * forgotten it (retention window passed, or the API restarted).
+ */
+export async function fetchBuildJob(jobId: string): Promise<BuildJob | null> {
+  const response = await fetch(`${API_URL}/api/builds/jobs/${jobId}`, {
+    cache: "no-store",
+  })
+
+  if (response.status === 404) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error("Could not check on the build.")
+  }
+
+  return (await response.json()) as BuildJob
 }
 
 

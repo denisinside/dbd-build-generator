@@ -52,8 +52,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${oswald.variable} ${inter.variable} min-w-[350px] bg-dbd-bg`}>
-      <body className="min-w-[350px] antialiased bg-dbd-bg text-dbd-text font-[family-name:var(--font-inter)]">
+    <html lang="en" className={`${oswald.variable} ${inter.variable} bg-dbd-bg`}>
+      <body className="antialiased bg-dbd-bg text-dbd-text font-[family-name:var(--font-inter)]">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

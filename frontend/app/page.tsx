@@ -9,6 +9,7 @@ import { ProviderButtons, SignIn } from "@/components/dbd/sign-in"
 import { SmartImage } from "@/components/dbd/smart-image"
 import {
   buildPath,
+  fetchBuildJob,
   fetchFeed,
   fetchMe,
   fetchMyBuilds,
@@ -16,12 +17,23 @@ import {
   streamBuild,
 } from "@/lib/api"
 import type { AuthUser, BuildStep, SignInProvider } from "@/lib/api"
-import { setPendingPrompt, takePendingPrompt, type PendingPrompt } from "@/lib/session"
+import {
+  clearPendingJob,
+  getPendingJob,
+  setPendingJob,
+  setPendingPrompt,
+  takePendingPrompt,
+  type PendingPrompt,
+} from "@/lib/session"
 import type { BuildSummary } from "@/types/build"
 
 
 // A build takes a minute to make, so anything faster than this only adds load.
 const FEED_REFRESH_MS = 10_000
+
+// Only used while catching up on a build whose stream was lost, so it can be
+// brisk: the wait is already over by the time anyone gets here.
+const JOB_POLL_MS = 2_000
 
 const STAGE_LABELS: Record<string, string> = {
   classifying: "Request",
@@ -104,6 +116,67 @@ export default function Page() {
     }
   }, [])
 
+  // One poller at a time: the stream failing and the tab coming back both
+  // ask for the same job, and there is nothing to gain from asking twice.
+  const watching = useRef(false)
+
+  const watchJob = useCallback(
+    async function watchJob(jobId: string) {
+      if (watching.current) {
+        return
+      }
+
+      watching.current = true
+      setError("")
+      setGenerating(true)
+
+      try {
+        for (;;) {
+          let job
+
+          try {
+            job = await fetchBuildJob(jobId)
+          } catch {
+            // A failed poll is a network hiccup, not a failed build. The
+            // build is on a server thread either way, so keep asking.
+            await sleep(JOB_POLL_MS)
+            continue
+          }
+
+          if (job === null) {
+            // Retention window passed, or the API restarted mid-build.
+            clearPendingJob()
+            setGenerating(false)
+            setError(
+              "Lost track of that generation. If it finished, it is in Your Builds below.",
+            )
+            return
+          }
+
+          setSteps(job.steps)
+
+          if (job.status === "done" && job.build) {
+            clearPendingJob()
+            router.push(buildPath(job.build.id))
+            return
+          }
+
+          if (job.status === "error") {
+            clearPendingJob()
+            setGenerating(false)
+            setError(job.error?.detail ?? "Build generation failed.")
+            return
+          }
+
+          await sleep(JOB_POLL_MS)
+        }
+      } finally {
+        watching.current = false
+      }
+    },
+    [router],
+  )
+
   const generate = useCallback(
     async function generate(text: string) {
       setPrompt(text)
@@ -112,19 +185,57 @@ export default function Page() {
       setGenerating(true)
 
       try {
-        const build = await streamBuild(text, (step) =>
-          setSteps((current) => [...current, step]),
+        const build = await streamBuild(
+          text,
+          (step) => setSteps((current) => [...current, step]),
+          setPendingJob,
         )
 
+        clearPendingJob()
         // Every build lives at its own URL, so it can be shared straight away.
         router.push(buildPath(build.id))
       } catch (requestError) {
+        const jobId = getPendingJob()
+
+        if (jobId) {
+          // The stream broke, not the build: it keeps running on the server,
+          // so poll it instead of throwing away a minute of generation.
+          void watchJob(jobId)
+          return
+        }
+
         setError(getErrorMessage(requestError))
         setGenerating(false)
       }
     },
-    [router],
+    [router, watchJob],
   )
+
+  useEffect(() => {
+    // A build this browser stopped watching — phone locked, tab discarded,
+    // browser closed — is still being made. Reattach instead of leaving the
+    // visitor with nothing to show for the wait.
+    function pickUpPendingJob() {
+      const jobId = getPendingJob()
+
+      if (jobId && document.visibilityState === "visible") {
+        void watchJob(jobId)
+      }
+    }
+
+    // Deferred by a tick so this is not a synchronous setState in an effect.
+    const kickoff = setTimeout(pickUpPendingJob, 0)
+
+    // A stream can die without failing: iOS keeps a backgrounded tab in
+    // memory, so the read simply never resolves again and nothing else would
+    // ever notice. Coming back to the page is the signal to go and ask.
+    document.addEventListener("visibilitychange", pickUpPendingJob)
+
+    return () => {
+      clearTimeout(kickoff)
+      document.removeEventListener("visibilitychange", pickUpPendingJob)
+    }
+  }, [watchJob])
 
   // Survives the double mount React runs in development: the first pass
   // already consumed the handed-over prompt, so the second has to read it
@@ -399,7 +510,10 @@ function GeneratingView({ steps }: { steps: BuildStep[] }) {
         <p className="mt-6 font-[family-name:var(--font-oswald)] text-xl font-semibold uppercase tracking-wide text-dbd-text">
           {current ? STAGE_LABELS[current.stage] ?? current.stage : "Starting up"}
         </p>
-        <p className="mt-2 text-sm text-dbd-muted">This usually takes a minute.</p>
+        <p className="mt-2 text-sm text-dbd-muted">
+          This usually takes a minute. You can leave this page — the build keeps going
+          and is picked back up when you return.
+        </p>
 
         <div
           aria-live="polite"
@@ -448,6 +562,11 @@ function formatDate(value: string) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value))
+}
+
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 

@@ -16,7 +16,7 @@ interface PowerCardProps {
 export function PowerCard({ power }: PowerCardProps) {
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <div className="flex items-center justify-center rounded-md border border-dbd-border bg-dbd-panel-2 px-3.5 py-2.5">
+      <div className="flex items-center justify-center rounded-md border border-dbd-border bg-dbd-panel-2 px-2 py-2 sm:px-3.5 sm:py-2.5">
         <EntityTooltip name={power.name} description={power.description}>
           <SmartImage
             src={power.image}

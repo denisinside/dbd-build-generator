@@ -19,7 +19,7 @@ export function BuildPrompt({ prompt }: BuildPromptProps) {
         Prompt
       </summary>
 
-      <div className="absolute right-0 z-30 mt-2 w-[min(22rem,80vw)] rounded-lg border border-dbd-border bg-[oklch(0.11_0.015_285)] p-4 text-left shadow-2xl">
+      <div className="fixed left-3 right-3 z-30 mt-2 rounded-lg border border-dbd-border bg-[oklch(0.11_0.015_285)] p-4 text-left shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:w-[min(22rem,80vw)]">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-dbd-muted/70">
           Asked for
         </p>

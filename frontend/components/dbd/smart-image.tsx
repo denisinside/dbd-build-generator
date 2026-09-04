@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
 interface SmartImageProps {
@@ -29,6 +29,27 @@ export function SmartImage({
   fallbackLabel,
 }: SmartImageProps) {
   const [failedSources, setFailedSources] = useState<string[]>([])
+
+  useEffect(() => {
+    if (failedSources.length === 0) {
+      return
+    }
+
+    // A phone aborts in-flight image requests when its browser goes to the
+    // background, and an aborted request fires `onError` exactly like a
+    // missing file does. Without this retry, coming back to a build page
+    // leaves every icon stuck on its initials placeholder.
+    function retryOnceVisible() {
+      if (document.visibilityState === "visible") {
+        setFailedSources([])
+      }
+    }
+
+    document.addEventListener("visibilitychange", retryOnceVisible)
+
+    return () => document.removeEventListener("visibilitychange", retryOnceVisible)
+  }, [failedSources.length])
+
   const candidates = [src, fallbackSrc].filter(
     (candidate): candidate is string => Boolean(candidate),
   )

@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 import traceback
+import uuid
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
@@ -53,8 +54,18 @@ FEED_MAX_LIMIT = 100
 # decides which builds a client calls "mine" until real accounts exist.
 SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
+# A build outlives the request that asked for it, so its progress and result
+# are kept under a job id the client can come back to. Without this, a phone
+# that locks mid-generation loses a build that was already paid for.
+#
+# ponytail: in-process dict, so an API restart forgets running jobs and a
+# second uvicorn worker would not see them. Redis if either changes.
+JOB_RETENTION_SECONDS = 1800
+
 _recent_generates = defaultdict(deque)
 _generate_slots = threading.Semaphore(GENERATE_CONCURRENCY)
+_jobs = {}
+_jobs_lock = threading.Lock()
 
 
 def builds_collection():
@@ -344,12 +355,36 @@ def sse(event, payload):
 
 
 def start_build_worker(prompt, session_id, user, release_slot):
-    """Run one build on its own thread, reporting progress through a queue.
+    """Run one build on its own thread, reporting progress two ways.
 
-    The build deliberately outlives a disconnected client: it is already paid
-    for by the time the first event goes out, and it still gets saved.
+    The queue feeds the SSE stream of whoever is watching right now; the job
+    record keeps the same events for whoever comes back later. The build
+    deliberately outlives a disconnected client - it is already paid for by
+    the time the first event goes out - and the job id is what makes the
+    result reachable again after a phone locks or a browser is closed.
     """
     events = queue.Queue()
+    job_id = uuid.uuid4().hex
+    job = {"status": "running", "steps": [], "build": None, "error": None}
+
+    with _jobs_lock:
+        forget_stale_jobs()
+        _jobs[job_id] = job
+
+    def publish(event, payload):
+        with _jobs_lock:
+            if event == "step":
+                job["steps"].append(payload)
+            elif event == "build":
+                job["status"] = "done"
+                job["build"] = payload
+            else:
+                job["status"] = "error"
+                job["error"] = payload
+
+            job["finished_at"] = time.monotonic()
+
+        events.put((event, payload))
 
     def worker():
         try:
@@ -357,17 +392,17 @@ def start_build_worker(prompt, session_id, user, release_slot):
                 prompt,
                 session_id,
                 user,
-                on_step=lambda stage, detail: events.put(
-                    ("step", {"stage": stage, "detail": detail})
+                on_step=lambda stage, detail: publish(
+                    "step", {"stage": stage, "detail": detail}
                 ),
             )
-            events.put(("build", result))
+            publish("build", result)
         except HTTPException as failure:
-            events.put(("error", {"status": failure.status_code, "detail": failure.detail}))
+            publish("error", {"status": failure.status_code, "detail": failure.detail})
         except Exception:
             traceback.print_exc()
-            events.put(
-                ("error", {"status": 500, "detail": "The build service failed unexpectedly."})
+            publish(
+                "error", {"status": 500, "detail": "The build service failed unexpectedly."}
             )
         finally:
             # Released before the sentinel, so a client that retries the
@@ -379,10 +414,27 @@ def start_build_worker(prompt, session_id, user, release_slot):
 
     threading.Thread(target=worker, daemon=True).start()
 
-    return events
+    return job_id, events
 
 
-async def drain_events(events):
+def forget_stale_jobs():
+    """Drop jobs nobody is coming back for. The caller holds `_jobs_lock`.
+
+    A job is only stale once it has finished: a running build has no deadline
+    and must never be dropped from under the client waiting for it.
+    """
+    cutoff = time.monotonic() - JOB_RETENTION_SECONDS
+    stale = [key for key, job in _jobs.items() if job.get("finished_at", cutoff + 1) < cutoff]
+
+    for job_id in stale:
+        del _jobs[job_id]
+
+
+async def drain_events(job_id, events):
+    # First frame, so a client that is about to lose its connection has the
+    # job id stored before that happens.
+    yield sse("job", {"job_id": job_id})
+
     while True:
         item = await asyncio.to_thread(events.get)
 
@@ -409,7 +461,7 @@ def stream_build(
 
     # The thread starts here, so the slot is released even if the client never
     # reads a single byte of the stream.
-    events = start_build_worker(
+    job_id, events = start_build_worker(
         request.prompt,
         clean_session_id(x_session_id),
         user,
@@ -417,10 +469,37 @@ def stream_build(
     )
 
     return StreamingResponse(
-        drain_events(events),
+        drain_events(job_id, events),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/builds/jobs/{job_id}")
+def get_build_job(job_id: str):
+    """Progress and result of a generation whose stream is gone.
+
+    A phone that locks or a tab that is closed kills the SSE connection, not
+    the build. Polling this is how the client picks the same build back up,
+    instead of the user losing a minute of generation and one of their quota.
+
+    No auth: the id is an unguessable token handed only to the caller that
+    started the job, and the build it returns lands in the shared feed anyway.
+    """
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+
+        if job is None:
+            raise HTTPException(
+                status_code=404, detail="This generation is no longer being tracked."
+            )
+
+        return {
+            "status": job["status"],
+            "steps": list(job["steps"]),
+            "build": job["build"],
+            "error": job["error"],
+        }
 
 
 @app.get("/api/builds")

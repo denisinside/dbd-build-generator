@@ -6,6 +6,7 @@ because a leak there is invisible until the generator stops answering.
 """
 
 import json
+import threading
 
 import pytest
 from bson import ObjectId
@@ -32,6 +33,13 @@ def fresh_rate_limit():
     main._recent_generates.clear()
     yield
     main._recent_generates.clear()
+
+
+@pytest.fixture(autouse=True)
+def fresh_jobs():
+    main._jobs.clear()
+    yield
+    main._jobs.clear()
 
 
 @pytest.fixture
@@ -86,10 +94,105 @@ def test_steps_arrive_before_the_build(client, monkeypatch):
     assert response.headers["content-type"].startswith("text/event-stream")
 
     events = read_events(response)
-    assert [name for name, _ in events] == ["step", "step", "build"]
-    assert events[1][1] == {"stage": "research", "detail": "Verifying Sprint Burst"}
+    # The job id comes first, before anything can go wrong with the connection.
+    assert [name for name, _ in events] == ["job", "step", "step", "build"]
+    assert events[2][1] == {"stage": "research", "detail": "Verifying Sprint Burst"}
     assert events[-1][1]["build_title"] == "Fast Repairs"
     assert ObjectId.is_valid(events[-1][1]["id"])
+
+
+# --- picking a build back up after the stream dies --------------------------
+
+
+def test_a_finished_build_stays_readable_by_job_id(client, monkeypatch):
+    """The case the whole job registry exists for: the client went away.
+
+    A phone that locks kills the stream, not the build. If the result were
+    only ever written into that stream, the visitor would have paid a minute
+    and a slice of their quota for nothing.
+    """
+    api, _ = client
+    monkeypatch.setattr(
+        main,
+        "run_generate_build",
+        scripted_build([("research", "Verifying Sprint Burst")]),
+    )
+
+    events = read_events(api.post("/api/builds/stream", json={"prompt": "fast repair build"}))
+    job_id = events[0][1]["job_id"]
+
+    job = api.get(f"/api/builds/jobs/{job_id}").json()
+
+    assert job["status"] == "done"
+    assert job["steps"] == [{"stage": "research", "detail": "Verifying Sprint Burst"}]
+    assert job["build"]["build_title"] == "Fast Repairs"
+    assert ObjectId.is_valid(job["build"]["id"])
+    # Owner identifiers are no more public here than they are in the feed.
+    assert "session_id" not in job["build"]
+
+
+def test_a_failed_build_reports_its_error_by_job_id(client, monkeypatch):
+    api, _ = client
+    monkeypatch.setattr(
+        main,
+        "run_generate_build",
+        scripted_build([], failure=ValueError("ungroundable")),
+    )
+
+    events = read_events(api.post("/api/builds/stream", json={"prompt": "nonsense build"}))
+    job = api.get(f"/api/builds/jobs/{events[0][1]['job_id']}").json()
+
+    assert job["status"] == "error"
+    assert job["error"]["status"] == 422
+    assert "ungroundable" not in job["error"]["detail"]
+
+
+def test_a_build_nobody_is_watching_still_lands_in_its_job(client, monkeypatch):
+    """The disconnected phone, exactly: nothing ever drains the event queue.
+
+    The slot is released only after the result has been published, so the
+    build being finished is what this waits on.
+    """
+    api, builds = client
+    monkeypatch.setattr(
+        main, "run_generate_build", scripted_build([("research", "Verifying Sprint Burst")])
+    )
+
+    released = threading.Event()
+    job_id, _unread = main.start_build_worker(
+        "fast repair build", None, None, released.set
+    )
+
+    assert released.wait(timeout=10)
+    assert builds.inserted[0]["prompt"] == "fast repair build"
+
+    job = api.get(f"/api/builds/jobs/{job_id}").json()
+
+    assert job["status"] == "done"
+    assert job["build"]["build_title"] == "Fast Repairs"
+
+
+def test_an_unknown_job_is_404_rather_than_a_crash(client):
+    api, _ = client
+
+    assert api.get("/api/builds/jobs/deadbeef").status_code == 404
+
+
+def test_only_finished_jobs_are_forgotten(client, monkeypatch):
+    """A running build has no deadline; dropping it would lose the result."""
+    api, _ = client
+    monkeypatch.setattr(main, "run_generate_build", scripted_build([]))
+
+    events = read_events(api.post("/api/builds/stream", json={"prompt": "fast repair build"}))
+    finished = events[0][1]["job_id"]
+    main._jobs[finished]["finished_at"] -= main.JOB_RETENTION_SECONDS + 1
+    main._jobs["still-running"] = {"status": "running", "steps": [], "build": None, "error": None}
+
+    with main._jobs_lock:
+        main.forget_stale_jobs()
+
+    assert finished not in main._jobs
+    assert "still-running" in main._jobs
 
 
 def test_a_failure_arrives_as_an_error_frame(client, monkeypatch):

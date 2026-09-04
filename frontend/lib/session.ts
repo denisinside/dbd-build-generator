@@ -138,3 +138,29 @@ export function takePendingPrompt(): PendingPrompt | null {
     return null
   }
 }
+
+
+const PENDING_JOB_KEY = "dbd-pending-job"
+
+
+/**
+ * The generation this browser is waiting on.
+ *
+ * localStorage rather than sessionStorage or React state: the whole point is
+ * to survive a phone locking the tab away or the browser being closed, which
+ * is exactly when the progress stream dies while the build keeps running on
+ * the server.
+ */
+export function setPendingJob(jobId: string) {
+  write(PENDING_JOB_KEY, jobId)
+}
+
+
+export function getPendingJob(): string {
+  return read(PENDING_JOB_KEY)
+}
+
+
+export function clearPendingJob() {
+  write(PENDING_JOB_KEY, "")
+}

@@ -13,7 +13,8 @@ interface LoadoutCardProps {
 export function LoadoutCard({ loadout }: LoadoutCardProps) {
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <div className="flex items-end justify-center gap-1.5 rounded-md border border-dbd-border bg-dbd-panel-2 px-3.5 py-2.5">
+      {/* Tighter on a phone so two of these fit on one line. */}
+      <div className="flex items-end justify-center gap-1 rounded-md border border-dbd-border bg-dbd-panel-2 px-2 py-2 sm:gap-1.5 sm:px-3.5 sm:py-2.5">
         {loadout.item ? (
           <EntityTooltip
             name={loadout.item.name}
@@ -30,7 +31,7 @@ export function LoadoutCard({ loadout }: LoadoutCardProps) {
             />
           </EntityTooltip>
         ) : null}
-        <div className="flex items-end gap-1.5">
+        <div className="flex items-end gap-1 sm:gap-1.5">
           {loadout.addons.map((addon, i) => (
             <EntityTooltip
               key={`${addon.name}-${i}`}
