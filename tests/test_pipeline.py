@@ -239,6 +239,48 @@ def test_research_stops_when_the_budget_is_spent(wired, monkeypatch):
     assert len(llm.prompts) == 1
 
 
+def test_the_web_search_tool_is_hidden_without_a_tavily_key(wired, monkeypatch):
+    """A missing key must remove the tool, not just make it error when called."""
+    monkeypatch.setattr(generate_build, "TAVILY_API_KEY", None)
+    captured = {}
+
+    class CapturingLLM(ScriptedLLM):
+        def bind_tools(self, tools):
+            captured["names"] = [t.name for t in tools]
+            return self
+
+    llm = CapturingLLM([AIMessage(content="Memo.")], {})
+    monkeypatch.setattr(generate_build, "build_llm", lambda *args, **kwargs: llm)
+
+    generate_build.run_research_agent(
+        "Survivor build", "Survivor", "English", lambda *a: None,
+        generate_build.Deadline(seconds=60),
+    )
+
+    assert "search_web_meta" not in captured["names"]
+    assert "search_dbd_rag" in captured["names"]
+
+
+def test_the_web_search_tool_is_offered_with_a_tavily_key(wired, monkeypatch):
+    monkeypatch.setattr(generate_build, "TAVILY_API_KEY", "a-key")
+    captured = {}
+
+    class CapturingLLM(ScriptedLLM):
+        def bind_tools(self, tools):
+            captured["names"] = [t.name for t in tools]
+            return self
+
+    llm = CapturingLLM([AIMessage(content="Memo.")], {})
+    monkeypatch.setattr(generate_build, "build_llm", lambda *args, **kwargs: llm)
+
+    generate_build.run_research_agent(
+        "Survivor build", "Survivor", "English", lambda *a: None,
+        generate_build.Deadline(seconds=60),
+    )
+
+    assert "search_web_meta" in captured["names"]
+
+
 def test_a_long_rag_chunk_is_trimmed_before_it_enters_the_context(wired, monkeypatch):
     result = generate_build.search_dbd_rag.invoke(
         {"query": "repair", "role": "Survivor", "category": "perk"}

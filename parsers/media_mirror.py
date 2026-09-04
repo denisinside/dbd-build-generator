@@ -15,6 +15,18 @@ PORTRAIT_WIDTH = 192
 POWER_WIDTH = 128
 ICON_WIDTH = 96
 
+# Not entity data — generic rarity-frame chrome the wiki reuses everywhere.
+# Mirrored the same way as everything else so the frontend never hotlinks the
+# wiki (frontend/lib/rarity.ts reads the resulting local paths).
+RARITY_FRAME_SOURCES = {
+    "Common": "https://deadbydaylight.wiki.gg/images/Dbd-addons-common.png",
+    "Uncommon": "https://deadbydaylight.wiki.gg/images/Dbd-addons-uncommon.png",
+    "Rare": "https://deadbydaylight.wiki.gg/images/Dbd-addons-rare.png",
+    "Very Rare": "https://deadbydaylight.wiki.gg/images/Dbd-addons-veryrare.png",
+    "Ultra Rare": "https://deadbydaylight.wiki.gg/images/Dbd-addons-ultrarare.png",
+    "Event": "https://deadbydaylight.wiki.gg/images/BP_BG_Event.png",
+}
+
 
 def mirror_one(container, url_key, path_key, category, name, force=False, width=None):
     """Download container[url_key] and store the public path in container."""
@@ -141,4 +153,18 @@ def mirror_items_media(data, force=False):
                 count += 1
 
     print(f"Mirrored {count} item and item add-on icons.")
+    return count
+
+
+def mirror_rarity_frames(force=False):
+    """Mirror the fixed set of rarity-frame backgrounds. No data file to update:
+    the local path is deterministic (`media_target_path`), so
+    `frontend/lib/rarity.ts` hardcodes it directly."""
+    count = 0
+
+    for rarity, url in RARITY_FRAME_SOURCES.items():
+        if download_media(url, "rarity", rarity, force=force):
+            count += 1
+
+    print(f"Mirrored {count}/{len(RARITY_FRAME_SOURCES)} rarity frames.")
     return count

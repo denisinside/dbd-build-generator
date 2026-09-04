@@ -359,6 +359,19 @@ def test_a_very_long_power_description_is_trimmed_for_the_card(db):
     assert len(power["description"]) <= POWER_SUMMARY_CHARS + 10
 
 
+def test_a_long_description_is_cut_on_a_sentence_not_mid_mechanic():
+    from generate_build import POWER_SUMMARY_CHARS, truncate_at_sentence
+
+    sentence = "The Killer gains a 20% Haste status effect. "
+    description = sentence * 30  # well past POWER_SUMMARY_CHARS
+
+    result = truncate_at_sentence(description, POWER_SUMMARY_CHARS)
+
+    assert result.endswith("...")
+    # Cut right after a ". ", not mid-word/mid-sentence.
+    assert result[:-4].endswith(".")
+
+
 def test_enrichment_says_which_character_teaches_each_perk(db):
     """Without it a new player cannot tell whose Bloodweb to grind."""
     enriched = enrich_build_entity_details(survivor_build(), db=db)

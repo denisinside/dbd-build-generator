@@ -2,7 +2,7 @@
 
 import { LogOut } from "lucide-react"
 import { SmartImage } from "@/components/dbd/smart-image"
-import { signInUrl, type AuthUser, type SignInProvider } from "@/lib/api"
+import { signInUrl, signOut, type AuthUser, type SignInProvider } from "@/lib/api"
 import { clearAuthToken } from "@/lib/session"
 
 
@@ -59,8 +59,13 @@ export function SignIn({ user, providers, onSignOut, onBeforeSignIn }: SignInPro
         <button
           type="button"
           onClick={() => {
-            clearAuthToken()
-            onSignOut()
+            // Revoke the token server-side first: it still knows who it is
+            // for this one request, and clearing it locally first would lose
+            // that.
+            void signOut().finally(() => {
+              clearAuthToken()
+              onSignOut()
+            })
           }}
           className="flex items-center gap-1.5 rounded-lg border border-dbd-border px-3 py-1.5 text-xs uppercase tracking-wider text-dbd-muted transition hover:border-dbd-purple/60 hover:text-dbd-text"
         >

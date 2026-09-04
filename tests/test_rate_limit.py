@@ -120,3 +120,18 @@ def test_an_anonymous_client_cannot_spend_an_accounts_budget(monkeypatch):
     main.enforce_generate_limit(FakeRequest("1.2.3.4"), user)
     # Same address, but signed out: a separate bucket, so it still passes.
     main.enforce_generate_limit(FakeRequest("1.2.3.4"), None)
+
+
+def test_a_refunded_hit_frees_the_slot_it_charged(monkeypatch):
+    """A 502 is our failure, not the caller's — it must not cost them a try."""
+    monkeypatch.setattr(main, "GENERATE_LIMIT_PER_HOUR", 1)
+    request = FakeRequest("1.2.3.4")
+
+    main.enforce_generate_limit(request, None)
+    with pytest.raises(HTTPException):
+        main.enforce_generate_limit(request, None)
+
+    main.refund_generate_hit(main.rate_limit_client(request, None))
+
+    # The refunded slot is free again.
+    main.enforce_generate_limit(request, None)

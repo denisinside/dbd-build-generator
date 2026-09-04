@@ -37,8 +37,9 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
 # 30 days. Long, because there is no refresh flow to renew it and re-running
 # the OAuth dance is the only way back in. Revocation does not depend on this:
-# `current_user` reads the user document on every request, so setting
-# `disabled` locks an account out immediately regardless of token lifetime.
+# `optional_user` reads the user document on every request and checks
+# `token_version` there, so both `disabled` and `/auth/logout` lock a token out
+# immediately regardless of how much of its 30 days is left.
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", str(30 * 24 * 3600)))
 
 JWT_HEADER = {"alg": "HS256"}
@@ -123,24 +124,45 @@ def session_key():
     return OctKey.import_key(AUTH_SECRET)
 
 
-def issue_token(user_id):
+def issue_token(user_id, token_version=0):
     now = int(time.time())
-    payload = {"sub": str(user_id), "iat": now, "exp": now + SESSION_TTL_SECONDS}
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + SESSION_TTL_SECONDS,
+        "ver": token_version,
+    }
 
     return jwt.encode(JWT_HEADER, payload, session_key())
 
 
-def read_token(token):
-    """The user id inside a session token, or None if it does not hold up."""
+def _decoded_claims(token):
     try:
         decoded = jwt.decode(token, session_key(), algorithms=["HS256"])
         CLAIMS.validate(decoded.claims)
     except (JoseError, ValueError):
         return None
 
-    subject = decoded.claims.get("sub")
+    return decoded.claims
+
+
+def read_token(token):
+    """The user id inside a session token, or None if it does not hold up."""
+    claims = _decoded_claims(token)
+
+    if claims is None:
+        return None
+
+    subject = claims.get("sub")
 
     return subject if ObjectId.is_valid(subject or "") else None
+
+
+def read_token_version(token):
+    """The `ver` claim a token was issued with, defaulting to 0 for old tokens."""
+    claims = _decoded_claims(token)
+
+    return claims.get("ver", 0) if claims is not None else None
 
 
 def bearer_token(authorization):
@@ -169,6 +191,11 @@ def optional_user(authorization: str = Header(default=None)):
     user = users_collection().find_one({"_id": ObjectId(user_id)})
 
     if user is None or user.get("disabled"):
+        return None
+
+    # `/auth/logout` bumps this counter, so every token issued before the
+    # bump stops resolving immediately instead of staying valid until `exp`.
+    if read_token_version(token) != user.get("token_version", 0):
         return None
 
     return user
@@ -336,7 +363,8 @@ async def callback(provider: str, request: Request):
 
     # The token goes in the fragment, not the query: fragments are not sent to
     # servers, do not appear in access logs, and are not passed on in Referer.
-    fragment = urlencode({"token": issue_token(user["_id"]), "next": path})
+    token = issue_token(user["_id"], user.get("token_version", 0))
+    fragment = urlencode({"token": token, "next": path})
 
     return RedirectResponse(f"{FRONTEND_URL}/auth/callback#{fragment}")
 
@@ -344,6 +372,22 @@ async def callback(provider: str, request: Request):
 @router.get("/me")
 def me(user=Depends(required_user)):
     return public_user(user)
+
+
+@router.post("/logout")
+def logout(user=Depends(required_user)):
+    """Revoke every token issued for this account, not just this browser's copy.
+
+    Clearing the token client-side does nothing to a token already in someone
+    else's hands (or a stolen `localStorage` copy) — it stays valid for up to
+    `SESSION_TTL_SECONDS`. Bumping `token_version` makes `optional_user` refuse
+    every token issued before this call, on the next request that uses one.
+    """
+    users_collection().update_one(
+        {"_id": user["_id"]}, {"$inc": {"token_version": 1}}
+    )
+
+    return {"ok": True}
 
 
 @router.post("/claim")

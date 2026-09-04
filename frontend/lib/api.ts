@@ -160,6 +160,18 @@ export async function fetchMe(): Promise<AuthUser | null> {
 }
 
 
+/**
+ * Revoke every token issued for this account, not just this browser's copy.
+ * Best-effort: the caller clears its local token regardless of the outcome.
+ */
+export async function signOut(): Promise<void> {
+  await fetch(`${API_URL}/auth/logout`, {
+    method: "POST",
+    headers: identityHeaders(),
+  }).catch(() => undefined)
+}
+
+
 /** Move this browser's anonymous builds onto the account that just signed in. */
 export async function claimAnonymousBuilds(): Promise<number> {
   const response = await fetch(`${API_URL}/auth/claim`, {

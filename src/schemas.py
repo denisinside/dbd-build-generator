@@ -3,8 +3,11 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
 
-# Allowed Lucide registry icons
-LucideIcon = Literal[
+# Single source for the icon set. `generate_build.py` imports this list
+# (rather than keeping its own copy) so a Python-side change can't drift; the
+# Lucide component map in frontend/lib/icon-registry.tsx still has to be kept
+# in sync by hand, checked by tests/test_icons_sync.py.
+ALLOWED_ICONS = [
     "book",
     "trophy",
     "eye",
@@ -22,6 +25,11 @@ LucideIcon = Literal[
     "radar",
     "ghost",
 ]
+
+# A Literal needs its members spelled out, so this can't be `Literal[*ALLOWED_ICONS]`
+# on the nose everywhere (Pydantic wants a real Literal type) — built from the
+# same list instead of retyped, so the two can't drift.
+LucideIcon = Literal[tuple(ALLOWED_ICONS)]
 
 
 # The classifier's language choice is interpolated straight into the research

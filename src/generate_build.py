@@ -27,6 +27,7 @@ from chroma_loader import (  # noqa: E402
 )
 from naming import normalize_name, word_spans  # noqa: E402
 from schemas import (  # noqa: E402
+    ALLOWED_ICONS,
     KILLER_AXES,
     SURVIVOR_AXES,
     BuildRequestAnalysis,
@@ -41,25 +42,6 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 DB_NAME = "dbd_generator"
 LLM_MODEL = os.getenv("OPENROUTER_CHAT_MODEL", "openai/gpt-5.6-luna")
-
-ALLOWED_ICONS = [
-    "book",
-    "trophy",
-    "eye",
-    "wrench",
-    "zap",
-    "gauge",
-    "footprints",
-    "cog",
-    "target",
-    "users",
-    "shield-alert",
-    "timer",
-    "sparkles",
-    "heart",
-    "radar",
-    "ghost",
-]
 
 ALLOWED_RAG_CATEGORIES = {
     "perk",
@@ -700,7 +682,12 @@ Return a structured classification using these rules:
     return analysis
 
 
-def get_system_prompt(role, output_language):
+def get_system_prompt(role, output_language, web_search_available=True):
+    web_search_rule = (
+        "- Use search_web_meta for current meta ideas when useful.\n"
+        if web_search_available
+        else ""
+    )
     base_prompt = f"""
 You are an agentic Dead by Daylight build researcher.
 The requested role is {role}. All prose must be written in {output_language}.
@@ -714,8 +701,7 @@ Research rules:
   for a Killer build, or the item category for a Survivor build. Add-ons only
   exist for one owner, and an unfiltered add-on search returns add-ons you are
   not allowed to use.
-- Use search_web_meta for current meta ideas when useful.
-- Validate every selected perk, character, item, addon, and counter Killer with
+{web_search_rule}- Validate every selected perk, character, item, addon, and counter Killer with
   lookup_mongo_entity before recommending it.
 - Official entity names and all enum values must remain in English.
 - Never translate perk, item, addon, Survivor, or Killer names.
@@ -782,12 +768,21 @@ def run_research_agent(user_query, role, output_language, on_step, deadline):
     print(f"Dynamic prose language: {output_language}")
     print(f"Agent model: {LLM_MODEL}")
 
-    tools = [search_dbd_rag, lookup_mongo_entity, search_web_meta]
+    # Without a Tavily key the tool can only ever answer with an error, so
+    # leave it off the list instead of letting the model spend a step
+    # discovering that.
+    tools = [search_dbd_rag, lookup_mongo_entity]
+    if TAVILY_API_KEY:
+        tools.append(search_web_meta)
     tools_by_name = {agent_tool.name: agent_tool for agent_tool in tools}
     llm = build_llm(RESEARCH_TEMPERATURE)
     agent_llm = llm.bind_tools(tools)
     messages = [
-        SystemMessage(content=get_system_prompt(role, output_language)),
+        SystemMessage(
+            content=get_system_prompt(
+                role, output_language, web_search_available=bool(TAVILY_API_KEY)
+            )
+        ),
         HumanMessage(content=user_query),
     ]
 
@@ -1191,9 +1186,29 @@ def entity_reason(value):
 # text in a hover card, and the head of it is the part that says what the power
 # does.
 #
-# ponytail: a blunt character cut. Parse the power's own summary section if the
-# truncation ever lands somewhere useless.
+# ponytail: still a blunt cut, just on a sentence instead of a word — parse the
+# power's own summary section if the truncation ever lands somewhere useless.
 POWER_SUMMARY_CHARS = 600
+
+
+def truncate_at_sentence(text, limit):
+    """Cut `text` to at most `limit` chars, preferring a sentence boundary.
+
+    A word-boundary cut still stops mid-mechanic ("gains a 20% Haste status
+    ef ..."). Ending on the last ". "/"! "/"? " inside the window reads like a
+    real summary instead; fall back to a word boundary only when no sentence
+    break exists in a reasonable stretch of the window.
+    """
+    if len(text) <= limit:
+        return text
+
+    window = text[:limit]
+    cut = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+
+    if cut > limit * 0.4:
+        return window[: cut + 1] + " ..."
+
+    return window.rsplit(" ", 1)[0] + " ..."
 
 
 def killer_power(killer):
@@ -1203,10 +1218,7 @@ def killer_power(killer):
     if not power.get("name"):
         return None
 
-    description = power.get("description") or ""
-
-    if len(description) > POWER_SUMMARY_CHARS:
-        description = description[:POWER_SUMMARY_CHARS].rsplit(" ", 1)[0] + " ..."
+    description = truncate_at_sentence(power.get("description") or "", POWER_SUMMARY_CHARS)
 
     return {
         "name": power["name"],

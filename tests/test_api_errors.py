@@ -36,6 +36,30 @@ def test_upstream_failure_is_502(monkeypatch):
     assert "openrouter" not in failure.detail.lower()
 
 
+def test_a_502_refunds_the_quota_hit_it_charged(monkeypatch):
+    """The failure is ours, so the caller should not lose an attempt to it."""
+    monkeypatch.setattr(main, "run_generate_build", raises(TimeoutError("down")))
+    refunded = []
+    monkeypatch.setattr(main, "refund_generate_hit", refunded.append)
+
+    with pytest.raises(HTTPException):
+        main.create_build("fast gen repair build", rate_limit_client="ip:1.2.3.4")
+
+    assert refunded == ["ip:1.2.3.4"]
+
+
+def test_a_422_does_not_refund_the_quota_hit(monkeypatch):
+    """The model answered several times; only a service failure gets refunded."""
+    monkeypatch.setattr(main, "run_generate_build", raises(ValueError("bad build")))
+    refunded = []
+    monkeypatch.setattr(main, "refund_generate_hit", refunded.append)
+
+    with pytest.raises(HTTPException):
+        main.create_build("fast gen repair build", rate_limit_client="ip:1.2.3.4")
+
+    assert refunded == []
+
+
 def test_a_rejected_prompt_is_still_400(monkeypatch):
     failure = call_generate(
         monkeypatch,

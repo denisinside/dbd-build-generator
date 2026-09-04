@@ -39,7 +39,9 @@ from generate_build import (  # noqa: E402
 
 DEFAULT_ALLOWED_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
 
-# Generating a build costs real money, and the endpoint is unauthenticated.
+# Generating a build costs real money. `require_account` (below) gates the
+# endpoint behind an account wherever signing in is possible; this hourly cap
+# is what still applies per account, or per IP when sign-in is unavailable.
 GENERATE_LIMIT_PER_HOUR = int(os.getenv("GENERATE_LIMIT_PER_HOUR", "5"))
 RATE_LIMIT_WINDOW_SECONDS = 3600
 
@@ -93,6 +95,18 @@ def clean_session_id(raw):
     return None
 
 
+def rate_limit_client(request, user):
+    """The bucket key `enforce_generate_limit` counts a caller under.
+
+    Shared with `refund_generate_hit` so a refund always targets the same
+    bucket the charge was recorded against.
+    """
+    if user is not None:
+        return f"user:{user['_id']}"
+
+    return f"ip:{request.client.host if request.client else 'unknown'}"
+
+
 def enforce_generate_limit(request: Request, user=Depends(auth.optional_user)):
     """Hourly cap on the one endpoint that costs money.
 
@@ -107,10 +121,10 @@ def enforce_generate_limit(request: Request, user=Depends(auth.optional_user)):
     """
     if user is not None:
         limit = user.get("generate_limit_per_hour") or GENERATE_LIMIT_PER_HOUR
-        client = f"user:{user['_id']}"
     else:
         limit = GENERATE_LIMIT_PER_HOUR
-        client = f"ip:{request.client.host if request.client else 'unknown'}"
+
+    client = rate_limit_client(request, user)
 
     if limit <= 0:
         return
@@ -137,6 +151,20 @@ def enforce_generate_limit(request: Request, user=Depends(auth.optional_user)):
     # Keep the map from growing forever on a long-lived process.
     for stale in [key for key, seen in _recent_generates.items() if not seen]:
         del _recent_generates[stale]
+
+
+def refund_generate_hit(client):
+    """Undo the quota charge for a build that failed on our side, not the caller's.
+
+    ponytail: pops the bucket's most recent hit, so a second request from the
+    same client racing in between could refund the wrong slot. Harmless at
+    this scale (a handful of requests per hour per client); a per-request
+    token would be needed to make it exact.
+    """
+    hits = _recent_generates.get(client)
+
+    if hits:
+        hits.pop()
 
 
 def require_account(user=Depends(auth.optional_user)):
@@ -281,7 +309,7 @@ def needs_entity_descriptions(document):
     return False
 
 
-def create_build(prompt, session_id=None, user=None, on_step=None):
+def create_build(prompt, session_id=None, user=None, on_step=None, rate_limit_client=None):
     """Run the pipeline, store the build, return it ready for the client.
 
     Raises HTTPException so both the plain and the streaming endpoint report
@@ -301,8 +329,12 @@ def create_build(prompt, session_id=None, user=None, on_step=None):
         ) from error
     except Exception as error:
         # Upstream model or search failure: never leak a bare 500 after the
-        # user has already waited a minute.
+        # user has already waited a minute. This is our failure, not the
+        # caller's, so give the quota hit back rather than making them lose an
+        # attempt to a service outage.
         traceback.print_exc()
+        if rate_limit_client:
+            refund_generate_hit(rate_limit_client)
         raise HTTPException(
             status_code=502,
             detail="The build service is unavailable right now. Please try again.",
@@ -343,18 +375,26 @@ def health():
 @app.post("/api/builds/generate", dependencies=[Depends(enforce_generate_limit)])
 def generate_build(
     request: GenerateBuildRequest,
+    http_request: Request = None,
     x_session_id: Optional[str] = Header(default=None),
     user=Depends(require_account),
 ):
     with generate_slot():
-        return create_build(request.prompt, clean_session_id(x_session_id), user)
+        return create_build(
+            request.prompt,
+            clean_session_id(x_session_id),
+            user,
+            rate_limit_client=(
+                rate_limit_client(http_request, user) if http_request else None
+            ),
+        )
 
 
 def sse(event, payload):
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def start_build_worker(prompt, session_id, user, release_slot):
+def start_build_worker(prompt, session_id, user, release_slot, rate_limit_client=None):
     """Run one build on its own thread, reporting progress two ways.
 
     The queue feeds the SSE stream of whoever is watching right now; the job
@@ -395,6 +435,7 @@ def start_build_worker(prompt, session_id, user, release_slot):
                 on_step=lambda stage, detail: publish(
                     "step", {"stage": stage, "detail": detail}
                 ),
+                rate_limit_client=rate_limit_client,
             )
             publish("build", result)
         except HTTPException as failure:
@@ -447,6 +488,7 @@ async def drain_events(job_id, events):
 @app.post("/api/builds/stream", dependencies=[Depends(enforce_generate_limit)])
 def stream_build(
     request: GenerateBuildRequest,
+    http_request: Request,
     x_session_id: Optional[str] = Header(default=None),
     user=Depends(require_account),
 ):
@@ -466,6 +508,7 @@ def stream_build(
         clean_session_id(x_session_id),
         user,
         _generate_slots.release,
+        rate_limit_client=rate_limit_client(http_request, user),
     )
 
     return StreamingResponse(

@@ -20,6 +20,7 @@ from media_mirror import (  # noqa: E402
     mirror_items_media,
     mirror_killers_media,
     mirror_perks_media,
+    mirror_rarity_frames,
     mirror_survivors_media,
 )
 from wiki_utils import MEDIA_ROOT  # noqa: E402
@@ -66,6 +67,10 @@ def main():
         save_json(data, file_path)
         print(f"Updated local media paths in {filename}.")
         print()
+
+    print("=== rarity frames ===")
+    total += mirror_rarity_frames(force=force)
+    print()
 
     print(f"Done. {total} images available locally under /media.")
 

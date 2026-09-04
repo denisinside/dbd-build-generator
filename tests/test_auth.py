@@ -41,6 +41,9 @@ class FakeUsers:
 
         existing.update(update.get("$set", {}))
 
+        for field, amount in update.get("$inc", {}).items():
+            existing[field] = existing.get(field, 0) + amount
+
     def create_index(self, *args, **kwargs):
         return None
 
@@ -194,6 +197,24 @@ def test_a_disabled_account_is_signed_out_immediately(monkeypatch):
     token = auth.issue_token(user_id)
 
     assert auth.optional_user(f"Bearer {token}") is None
+
+
+def test_logging_out_invalidates_every_previously_issued_token(monkeypatch):
+    user_id = ObjectId()
+    users = FakeUsers([{"_id": user_id, "provider": "twitch"}])
+    monkeypatch.setattr(auth, "users_collection", lambda: users)
+
+    old_token = auth.issue_token(user_id)
+    assert auth.optional_user(f"Bearer {old_token}") is not None
+
+    auth.logout({"_id": user_id})
+
+    # The old token is dead even though it has not expired.
+    assert auth.optional_user(f"Bearer {old_token}") is None
+
+    current_version = users.find_one({"_id": user_id})["token_version"]
+    fresh_token = auth.issue_token(user_id, current_version)
+    assert auth.optional_user(f"Bearer {fresh_token}") is not None
 
 
 def test_a_live_account_resolves_from_its_token(monkeypatch):
