@@ -25,11 +25,15 @@ import {
   takePendingPrompt,
   type PendingPrompt,
 } from "@/lib/session"
+import { EXAMPLE_PROMPTS } from "@/lib/example-prompts"
 import type { BuildSummary } from "@/types/build"
 
 
 // A build takes a minute to make, so anything faster than this only adds load.
 const FEED_REFRESH_MS = 10_000
+
+// Slow enough to actually read one example before it changes.
+const EXAMPLE_ROTATE_MS = 4_000
 
 // Only used while catching up on a build whose stream was lost, so it can be
 // brisk: the wait is already over by the time anyone gets here.
@@ -47,6 +51,11 @@ const STAGE_LABELS: Record<string, string> = {
 export default function Page() {
   const router = useRouter()
   const [prompt, setPrompt] = useState("")
+  // Starts on a random one so a page reload doesn't always show the same
+  // example first.
+  const [exampleIndex, setExampleIndex] = useState(() =>
+    Math.floor(Math.random() * EXAMPLE_PROMPTS.length),
+  )
   const [feed, setFeed] = useState<BuildSummary[]>([])
   const [mine, setMine] = useState<BuildSummary[]>([])
   const [steps, setSteps] = useState<BuildStep[]>([])
@@ -114,6 +123,16 @@ export default function Page() {
     return () => {
       cancelled = true
     }
+  }, [])
+
+  useEffect(() => {
+    // Just the placeholder, so it is harmless to keep rotating even while
+    // the field already has text in it or the page is mid-generation.
+    const timer = setInterval(() => {
+      setExampleIndex((current) => (current + 1) % EXAMPLE_PROMPTS.length)
+    }, EXAMPLE_ROTATE_MS)
+
+    return () => clearInterval(timer)
   }, [])
 
   // One poller at a time: the stream failing and the tab coming back both
@@ -334,11 +353,19 @@ export default function Page() {
             id="build-prompt"
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => {
+              // Only when empty: Tab still has to move focus normally once
+              // there is real text to leave behind.
+              if (event.key === "Tab" && prompt.trim() === "") {
+                event.preventDefault()
+                setPrompt(EXAMPLE_PROMPTS[exampleIndex])
+              }
+            }}
             minLength={3}
             maxLength={1000}
             required
             rows={5}
-            placeholder="Example: Create a Survivor build for fast generator repairs and safe escapes."
+            placeholder={`e.g. "${EXAMPLE_PROMPTS[exampleIndex]}" — press Tab to use this example`}
             className="resize-y rounded-lg border border-dbd-border bg-black/20 px-4 py-3 text-sm leading-relaxed text-dbd-text outline-none transition placeholder:text-dbd-muted/60 focus:border-dbd-purple focus:ring-2 focus:ring-dbd-purple/20"
           />
           <button

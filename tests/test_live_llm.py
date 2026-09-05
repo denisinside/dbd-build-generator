@@ -130,7 +130,7 @@ def assert_fully_grounded(build, db, expected_role):
     # The mirror of counter_killers, and the only thing a Killer build has
     # here: what the other side brings against you.
     opposing_role = "Killer" if expected_role == "Survivor" else "Survivor"
-    assert len(build["counter_perks"]) == 3
+    assert len(build["counter_perks"]) == 6
 
     for counter in build["counter_perks"]:
         perk = find_perk_document(db, counter["perk_name"])
@@ -191,7 +191,7 @@ def test_a_killer_build_now_says_what_beats_it(real_db):
 
     assert_fully_grounded(build, real_db, "Killer")
     assert build["counter_killers"] is None
-    assert len(build["counter_perks"]) == 3
+    assert len(build["counter_perks"]) == 6
     assert all(counter["explanation"] for counter in build["counter_perks"])
 
 

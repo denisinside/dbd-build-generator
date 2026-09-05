@@ -24,6 +24,22 @@ ALLOWED_ICONS = [
     "heart",
     "radar",
     "ghost",
+    "skull",
+    "flame",
+    "swords",
+    "wind",
+    "crosshair",
+    "brain",
+    "map",
+    "compass",
+    "door-open",
+    "key",
+    "flashlight",
+    "bandage",
+    "shield-check",
+    "shield-off",
+    "hourglass",
+    "handshake",
 ]
 
 # A Literal needs its members spelled out, so this can't be `Literal[*ALLOWED_ICONS]`
@@ -252,10 +268,10 @@ class DbDBuildSchema(BaseModel):
         description="Exactly 5 counter killers for Survivor; null for Killer",
     )
     counter_perks: list[CounterPerkBlock] = Field(
-        min_length=3,
-        max_length=3,
+        min_length=6,
+        max_length=6,
         description=(
-            "Exactly 3 perks of the OPPOSING role that blunt this build. "
+            "Exactly 6 perks of the OPPOSING role that blunt this build. "
             "Killer perks for a Survivor build, Survivor perks for a Killer build."
         ),
     )

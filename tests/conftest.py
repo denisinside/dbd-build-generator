@@ -70,6 +70,34 @@ PERKS = [
         "description": "Reveal distant Survivors after a hook.",
         "icon_url": "https://wiki.example/bbq.png",
     },
+    {
+        "name": "Nowhere to Hide",
+        "role": "Killer",
+        "character": "Trapper",
+        "description": "Reveal generator auras after a hit.",
+        "icon_url": "https://wiki.example/nowhere.png",
+    },
+    {
+        "name": "Deadlock",
+        "role": "Killer",
+        "character": "Executioner",
+        "description": "Block the most-progressed Generator.",
+        "icon_url": "https://wiki.example/deadlock.png",
+    },
+    {
+        "name": "Kindred",
+        "role": "Survivor",
+        "character": "Claudette",
+        "description": "See the Killer's aura while on the hook.",
+        "icon_url": "https://wiki.example/kindred.png",
+    },
+    {
+        "name": "Iron Will",
+        "role": "Survivor",
+        "character": "David",
+        "description": "Reduces grunts of pain.",
+        "icon_url": "https://wiki.example/ironwill.png",
+    },
 ]
 
 KILLERS = [
@@ -286,6 +314,18 @@ def survivor_build(**overrides):
                 "perk_name": "Corrupt Intervention",
                 "explanation": "Змушує починати з невигідних генераторів.",
             },
+            {
+                "perk_name": "Barbecue & Chilli",
+                "explanation": "Видає позиції після кожного гака.",
+            },
+            {
+                "perk_name": "Nowhere to Hide",
+                "explanation": "Видає генератори одразу після влучення.",
+            },
+            {
+                "perk_name": "Deadlock",
+                "explanation": "Блокує генератор, на якому найбільше прогресу.",
+            },
         ],
         "counter_killers": [
             {
@@ -384,6 +424,18 @@ def killer_build(**overrides):
             {
                 "perk_name": "Adrenaline",
                 "explanation": "Повертає здоров'я саме тоді, коли ви тиснете.",
+            },
+            {
+                "perk_name": "Déjà Vu",
+                "explanation": "Одразу видає, які генератори варто патрулювати.",
+            },
+            {
+                "perk_name": "Kindred",
+                "explanation": "Команда бачить вас і одна одну біля гака.",
+            },
+            {
+                "perk_name": "Iron Will",
+                "explanation": "Гасить звукові підказки під час чейсу.",
             },
         ],
         "counter_killers": None,

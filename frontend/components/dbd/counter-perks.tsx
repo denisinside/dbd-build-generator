@@ -1,5 +1,6 @@
 import type { CounterPerk, Role } from "@/types/build"
 import { SmartImage } from "./smart-image"
+import { EntityTooltip } from "./entity-tooltip"
 
 interface CounterPerksProps {
   counterPerks: CounterPerk[]
@@ -45,17 +46,19 @@ export function CounterPerks({ counterPerks, role }: CounterPerksProps) {
               fallbackLabel={counter.name}
               className="h-14 w-14 rounded-full border border-dbd-border bg-dbd-panel-2"
             />
-            <h3 className="mt-3 text-sm font-semibold text-dbd-text">{counter.name}</h3>
+            <EntityTooltip
+              name={counter.name}
+              description={counter.description}
+              character={counter.character}
+            >
+              <h3 className="mt-3 cursor-help text-sm font-semibold text-dbd-text underline decoration-dotted decoration-dbd-text/40 underline-offset-2">
+                {counter.name}
+              </h3>
+            </EntityTooltip>
 
             {counter.character ? (
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-dbd-purple">
                 {counter.character}
-              </p>
-            ) : null}
-
-            {counter.description ? (
-              <p className="mt-3 text-[11px] leading-relaxed text-dbd-muted/80">
-                {counter.description}
               </p>
             ) : null}
 

@@ -20,6 +20,6 @@ data/_path_check.json
 frontend/tsconfig.tsbuildinfo
 media/
 
-# Робочий контекст для агента, не частина репозиторію.
 CLAUDE.md
+AGENTS.md
 docs/

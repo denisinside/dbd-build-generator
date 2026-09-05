@@ -703,8 +703,13 @@ Research rules:
   not allowed to use.
 {web_search_rule}- Validate every selected perk, character, item, addon, and counter Killer with
   lookup_mongo_entity before recommending it.
-- Official entity names and all enum values must remain in English.
-- Never translate perk, item, addon, Survivor, or Killer names.
+- Official entity names (perks, add-ons, items, characters, Killer powers) and
+  enum literals (axis names, difficulty levels) must remain in English and
+  never be translated.
+- Everything else must be in {output_language}, including ordinary gameplay
+  vocabulary: words like "hook", "chase", "gen"/"generator", "loop", "tunnel",
+  "camp", "hex", "totem", "hatch", and "Survivor"/"Killer" used as plain nouns
+  rather than as part of an official name. Do not leave these in English.
 - Never write Russian. Otherwise use {output_language} for all prose.
 - Select exactly 4 perks belonging to the requested role.
 - At the end, return a concise research memo with canonical entity names and
@@ -715,7 +720,7 @@ Research rules:
 For a Survivor build, research team play, repair speed, stealth, chase,
 appropriate item kits, and exactly 5 counter Killers. Validate that each item
 addon belongs to the selected item category.
-Also research 3 Killer perks that blunt this build, and how to play around
+Also research 6 Killer perks that blunt this build, and how to play around
 each one.
 """.strip()
 
@@ -723,7 +728,7 @@ each one.
 For a Killer build, research map control, chase, generator regression, power
 usage, and two alternative pairs of addons for the selected Killer. The final
 build must not contain counter Killers.
-Also research 3 Survivor perks that blunt this build, and how to play around
+Also research 6 Survivor perks that blunt this build, and how to play around
 each one. This is what stands in for counter Killers on a Killer build.
 """.strip()
 
@@ -862,7 +867,12 @@ VERIFIED RESEARCH MEMO:
 
 STRICT OUTPUT RULES:
 - role must be {role}.
-- All prose fields must be in {output_language}.
+- All prose fields must be in {output_language}. Only official entity names
+  (perks, add-ons, items, characters, Killer powers) and enum literals (axis
+  names, difficulty levels) stay in English inside that prose. Everything
+  else, including ordinary gameplay vocabulary ("hook", "chase", "gen", "loop",
+  "tunnel", "camp", "hex", "totem", "hatch", "Survivor"/"Killer" used as plain
+  nouns), must be in {output_language} too.
 - No Russian language is allowed.
 - Official entity names and enum literals must stay in English.
 - Use exactly 4 verified, role-appropriate perks.
@@ -877,7 +887,7 @@ STRICT OUTPUT RULES:
 - Killer kits must use two distinct unordered addon pairs. Never repeat the
   same pair in both kits, even if the addon order is reversed.
 - {counter_rule}
-- counter_perks must contain exactly 3 verified {opposing_role} perks that blunt
+- counter_perks must contain exactly 6 verified {opposing_role} perks that blunt
   this build, each with what it does to you and how to play around it.
 - difficulty_level must be "Low Difficulty", "Medium Difficulty" or "High
   Difficulty". Use the whole range: not every bad matchup is a nightmare.

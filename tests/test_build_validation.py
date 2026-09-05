@@ -410,6 +410,9 @@ def test_a_survivor_build_is_countered_by_killer_perks(db):
         "Hex: Ruin",
         "Lethal Pursuer",
         "Corrupt Intervention",
+        "Barbecue & Chilli",
+        "Nowhere to Hide",
+        "Deadlock",
     ]
 
 
@@ -422,6 +425,9 @@ def test_a_killer_build_is_countered_by_survivor_perks(db):
         "Sprint Burst",
         "Windows of Opportunity",
         "Adrenaline",
+        "Déjà Vu",
+        "Kindred",
+        "Iron Will",
     ]
 
 

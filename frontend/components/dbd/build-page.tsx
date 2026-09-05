@@ -54,7 +54,12 @@ export function BuildPage({ build, backHref = "/" }: BuildPageProps) {
         <div className="flex flex-col gap-9">
           <BuildHeader build={build} />
           <BuildAxes evaluation={build.evaluation} />
-          <BuildSynergies synergies={build.synergies} />
+          <BuildSynergies
+            synergies={build.synergies}
+            perks={build.perks}
+            loadouts={build.loadouts}
+            power={build.power}
+          />
           <TargetAudience items={build.targetAudience} />
           <GameplayStrategy strategy={build.strategy} />
           <ProsCons pros={build.pros} cons={build.cons} />
